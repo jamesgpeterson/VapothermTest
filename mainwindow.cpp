@@ -324,12 +324,17 @@ void MainWindow::startTestsButtonPress()
     //
     m_script.setTimeouts(m_timeoutA_ms, m_timeoutB_ms);
 
+    //
+    // Make a list of all the tests that failed
+    //
+    std::vector<int> failedTestList;
+
     bool scriptPassed = true;
     ui->labelResults->setText(g_stringWorking);
     unsigned int testCount = m_testList.size();
     for (unsigned int i=0; i<testCount; i++)
     {
-        if (CAbort::Instance()->abortRequested())
+        if ((CAbort::Instance()->abortRequested()) || (m_script.terminatedEarly()))
         {
             ui->labelResults->setText(g_stringAborted);
             scriptPassed = false;
@@ -371,6 +376,8 @@ void MainWindow::startTestsButtonPress()
             m_script.runTest(m_testNumbers[i]);
             if (m_script.sawError())
             {
+                failedTestList.push_back(m_testNumbers[i]);
+
                 if (CAbort::Instance()->abortRequested())
                 {
                     logStringRed("Result: FAILED - Aborted by Operator");
@@ -417,6 +424,24 @@ void MainWindow::startTestsButtonPress()
     if ((!CAbort::Instance()->abortRequested()) && (m_indexOnExit >= 0))
     {
         m_script.runTest(m_indexOnExit);
+    }
+
+    //
+    // List the tests that failed
+    //
+    if (failedTestList.size() > 0)
+    {
+        logStringRedToWindow(" ");
+        logStringRedToWindow("------------------------------------------------------------------------------------------");
+        logStringRedToWindow("FAILED Tests:");
+        for (unsigned int i=0; i<failedTestList.size(); i++)
+        {
+            QString name("        ");
+            name += m_script.getTestName(failedTestList[i]);
+            //QString *name = m_script.getTestName(failedTestList[i]);
+            logStringRedToWindow(name.toLocal8Bit());
+        }
+        logStringRedToWindow("------------------------------------------------------------------------------------------");
     }
 
     //
@@ -758,6 +783,19 @@ void MainWindow::logStringRed(const char *string)
     m_reportStrings.push_back(string);
 }
 
+void MainWindow::logStringRedToWindow(const char *string)
+{
+    ui->textEditResults->moveCursor (QTextCursor::End);
+    ui->textEditResults->setTextColor(QColor("red"));
+    ui->textEditResults->insertPlainText(string);
+    ui->textEditResults->moveCursor (QTextCursor::End);
+
+    ui->textEditResults->setTextColor(QColor( "black" ));
+    ui->textEditResults->insertPlainText ("\r\n");
+    qApp->processEvents();
+}
+
+
 
 void MainWindow::logStringGray(const char *string)
 {
@@ -839,6 +877,22 @@ void MainWindow::reloadScriptButtonPress()
      }
 
     setTitle();
+}
+
+void MainWindow::selectAllTests()
+{
+    for (unsigned int i=0; i<m_testList.size(); i++)
+    {
+        m_testList[i]->setCheckState(Qt::Checked);
+    }
+}
+
+void MainWindow::clearAllTests()
+{
+    for (unsigned int i=0; i<m_testList.size(); i++)
+    {
+        m_testList[i]->setCheckState(Qt::Unchecked);
+    }
 }
 
 

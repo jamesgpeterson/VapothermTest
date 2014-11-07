@@ -80,7 +80,6 @@ CCommand::~CCommand()
  *     prompt <string - question>                            - asks the user a yes/no question
  *     pause <string - comment>                              - pause till the user resumes
  *     waitfor <a|b> <int-ms> <string>                       - read from specified channel until string is seen or timeout
- *     run_test <string - test name>                         - run the specified test
  *     end_script                                            - terminate the script
  *     end_on_error                                          - terminate on error on previous command
  *
@@ -306,18 +305,6 @@ void CCommand::parse(const char *line, int lineNumber)
         m_argInteger = args[1].toInt();
         return;
     }
-
-    //
-    // run_test
-    //
-    if (args[0] == "run_test")
-    {
-        m_type = CMD_RUNTEST;
-        m_stringArg = m_line.right(m_line.size()-8);
-        m_stringArg = m_stringArg.trimmed();
-        return;
-    }
-
 
     //
     // prompt

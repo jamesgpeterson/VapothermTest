@@ -24,8 +24,9 @@ CTestScript::CTestScript()
     m_commandList.clear();
     m_testList.clear();
     m_responseBuffer[0] = '\0';
-    m_errorEncountered = false;
     m_terminateOnError = false;
+    m_errorEncountered = false;
+    m_terminatedEarly = false;
 }
 
 
@@ -168,16 +169,13 @@ int CTestScript::findTestByName(QString &name)
 */
 bool CTestScript::runTest(unsigned int n)
 {
-    static bool inNestedTest = false;
+    m_errorEncountered = false;
+    m_terminatedEarly = false;
 
     if (n >= m_testList.size())
     {
         return(true);
     }
-
-    if (!inNestedTest)
-        m_errorEncountered = false;
-
 
     int firstCommand = m_testList[n];
     int lastCommand = (n < m_testList.size()-1) ? m_testList[n+1] : m_commandList.size();
@@ -479,32 +477,6 @@ bool CTestScript::runTest(unsigned int n)
             break;
         }
 
-        case CCommand::CMD_RUNTEST:
-            {
-                if (!inNestedTest)
-                {
-                    int testNumber = findTestByName(pCommand->m_stringArg);
-                    if (testNumber >= 0)
-                    {
-                        inNestedTest = true;
-                        bool runTestReturn = runTest(testNumber);
-                        inNestedTest = false;
-                        if (!runTestReturn)
-                        {
-                            return(false);
-                        }
-                    }
-                    else
-                    {
-                        QString msg = "Subtest not found: ";
-                        msg.append(pCommand->m_stringArg);
-                        logStringRed(msg.toLocal8Bit());
-                        m_errorEncountered = true;
-                    }
-                }
-                break;
-            }
-
         case CCommand::CMD_COMMENT:
             {
                 if (pCommand->m_line.length() > 0)
@@ -523,7 +495,10 @@ bool CTestScript::runTest(unsigned int n)
         case CCommand::CMD_END_ON_ERROR:
         {
             if (m_errorEncountered)
+            {
+                m_terminatedEarly = true;
                 return(false);
+            }
             break;
         }
 

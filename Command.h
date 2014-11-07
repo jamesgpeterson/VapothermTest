@@ -30,7 +30,6 @@ public:
         CMD_EXPECT_CHAR, // expect_char <integer field> <integer char number> <char>
         CMD_EXPECT_STR,  // expect_str <integer field> <string - pattern to match>
         CMD_WAITFOR,     // wait for specified string
-        CMD_RUNTEST,
         CMD_END_SCRIPT,
         CMD_END_ON_ERROR
     };

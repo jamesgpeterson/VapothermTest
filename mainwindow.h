@@ -12,7 +12,7 @@
 
 #include "TestScript.h"
 
-#define VERSION_STRING "1.0.010"
+#define VERSION_STRING "1.0.012"
 
 namespace Ui
 {
@@ -49,10 +49,14 @@ public slots:
     void abortButtonPress();
     void clearButtonPressed();
     void enableButtonsAfterRun(bool enable);
+    void selectAllTests();
+    void clearAllTests();
+
 
     void logStringBlack(const char *string);
     void logStringGray(const char *string);
     void logStringRed(const char *string);
+    void logStringRedToWindow(const char *string);
     void logCommand(const char *cmd);
     void logReply(const char *reply);
     bool sendVapoThermCommand(int portIndex, const char *command);
