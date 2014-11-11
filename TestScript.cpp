@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <time.h>
 #include <QMessageBox>
 #include <QtCore/QtGlobal>
 #include <QTimer>
@@ -190,13 +191,11 @@ bool CTestScript::runTest(unsigned int n)
 
         CCommand *pCommand = &m_commandList[i];
 
-        if (pCommand->m_type == CCommand::CMD_END_SCRIPT)
-            break;
-
         switch (pCommand->m_type)
         {
             case CCommand::CMD_TEST:
             {
+                m_currentTest = pCommand->m_stringArg;
                 break;
             }
 
@@ -204,7 +203,7 @@ bool CTestScript::runTest(unsigned int n)
             {
                 break;
             }
-
+#if 0
             case CCommand::CMD_TYPE:
             {
                 QString line = "TestType: ";
@@ -212,12 +211,11 @@ bool CTestScript::runTest(unsigned int n)
                 logStringBlack(line.toLocal8Bit());
                 break;
             }
+#endif
 
             case CCommand::CMD_DESC:
             {
-                QString line = "TestDesc: ";
-                line.append(pCommand->m_stringArg);
-                logStringBlack(line.toLocal8Bit());
+                m_currentDesc = pCommand->m_stringArg;
                 break;
             }
 
@@ -232,6 +230,8 @@ bool CTestScript::runTest(unsigned int n)
 
             case CCommand::CMD_PROMPT:
             {
+                generateTestHeader(pCommand->m_lineNumber);
+
                 QMessageBox::StandardButton reply;
                 QString title = "VapoTherm Test";
                 QString prefix = "<font size=20>";
@@ -241,12 +241,15 @@ bool CTestScript::runTest(unsigned int n)
                 if (reply == QMessageBox::No)
                 {
                     m_errorEncountered = true;
-                    logStringRed("User responce: NEGATIVE");
+                    logStringRed("Value: NEGATIVE");
+                    logStringRed("Result: FAILED (operator inspection)");
                 }
                 else
                 {
-                    logStringBlack("User responce: POSITIVE");
+                    logStringBlack("Value: POSITIVE");
+                    logStringBlack("Result: PASSED (operator inspection)");
                 }
+                generateTestTrailer();
                 break;
             }
 
@@ -279,7 +282,7 @@ bool CTestScript::runTest(unsigned int n)
                 m_responseBuffer[0] = '\0';
                 if (!readVapoThermResponse(0, m_responseBuffer, sizeof(m_responseBuffer), m_timeoutA_ms))
                 {
-                    logStringRed("FAILED to read from instrument");
+                    logStringGray("FAILED to read from instrument");
                     m_errorEncountered = true;
                 }
                 else
@@ -307,7 +310,7 @@ bool CTestScript::runTest(unsigned int n)
                 m_responseBuffer[0] = '\0';
                 if (!readVapoThermResponse(1, m_responseBuffer, sizeof(m_responseBuffer), m_timeoutB_ms))
                 {
-                    logStringRed("FAILED to read from instrument");
+                    logStringGray("FAILED to read from instrument");
                     m_errorEncountered = true;
                 }
                 else
@@ -329,15 +332,30 @@ bool CTestScript::runTest(unsigned int n)
                 break;
             }
 
+            case CCommand::CMD_UNITS:
+            {
+                QString line = "Units: ";
+                line.append(pCommand->m_stringArg);
+                logStringBlack(line.toLocal8Bit());
+                break;
+            }
+
             case CCommand::CMD_EXPECT:
             {
-                logStringBlack(pCommand->m_line.toLocal8Bit());
+                generateTestHeader(pCommand->m_lineNumber);
+                logStringGray(pCommand->m_line.toLocal8Bit());
                 QString line = m_responseBuffer;
                 line = line.trimmed();
                 QStringList args = line.split(QRegExp(" "), QString::SkipEmptyParts);
+                char msg[500];
+                sprintf(msg, "LowerLimit: %0.3lf", pCommand->m_argMin);
+                logStringBlack(msg);
+                sprintf(msg, "UpperLimit: %0.3lf", pCommand->m_argMax);
+                logStringBlack(msg);
+
                 if (args.size() < pCommand->m_argNumber)
                 {
-                    logStringRed("Test FAILED - expected field not found");
+                    logStringRed("Result: FAILED (expected field not found)");
                     m_errorEncountered = true;
                 }
                 else
@@ -346,35 +364,42 @@ bool CTestScript::runTest(unsigned int n)
                     double testNumber = args[pCommand->m_argNumber-1].toDouble(&ok);
                     if (!ok)
                     {
-                        logStringRed("Test FAILED - unexpected data returned from instrument");
+                        logStringRed("Result: FAILED (unexpected data returned from instrument)");
                         m_errorEncountered = true;
                     }
                     else if ((testNumber < pCommand->m_argMin) || (testNumber > pCommand->m_argMax))
                     {
-                        char msg[500];
-                        sprintf(msg, "Test FAILED: %0.3lf not in expected range [%0.3lf, %0.3lf]", testNumber, pCommand->m_argMin, pCommand->m_argMax);
+                        sprintf(msg, "Value: %0.3lf", testNumber);
+                        logStringBlack(msg);
+                        sprintf(msg, "Result: FAILED (%0.3lf not in expected range [%0.3lf, %0.3lf])", testNumber, pCommand->m_argMin, pCommand->m_argMax);
                         logStringRed(msg);
                         m_errorEncountered = true;
                     }
                     else
                     {
-                        char msg[500];
-                        sprintf(msg, "Test PASSED: %0.3lf in expected range [%0.3lf, %0.3lf]", testNumber, pCommand->m_argMin, pCommand->m_argMax);
+                        sprintf(msg, "Value: %0.3lf", testNumber);
+                        sprintf(msg, "Result: PASSED (%0.3lf in expected range [%0.3lf, %0.3lf])", testNumber, pCommand->m_argMin, pCommand->m_argMax);
                         logStringBlack(msg);
                     }
                 }
+                generateTestTrailer();
                 break;
             }
 
         case CCommand::CMD_EXPECT_CHAR:
             {
-                logStringBlack(pCommand->m_line.toLocal8Bit());
+                generateTestHeader(pCommand->m_lineNumber);
+                logStringGray(pCommand->m_line.toLocal8Bit());
                 QString line = m_responseBuffer;
                 line = line.trimmed();
                 QStringList args = line.split(QRegExp(" "), QString::SkipEmptyParts);
+                char msg[500];
+                sprintf(msg, "Nominal: \'%c\'", pCommand->m_expectedChar);
+                logStringBlack(msg);
+
                 if (pCommand->m_argNumber > args.size())
                 {
-                    logStringRed("Test FAILED reading data from instrument");
+                    logStringRed("Result: FAILED (reading data from fixture or device)");
                     m_errorEncountered = true;
                 }
                 else
@@ -383,61 +408,69 @@ bool CTestScript::runTest(unsigned int n)
                     int argLength = arg->size();
                     if (pCommand->m_charNumber > argLength)
                     {
-                        logStringRed("Test FAILED - argument length");
+                        logStringRed("Result: FAILED (argument length)");
                         m_errorEncountered = true;
                     }
                     else if (arg->toLocal8Bit()[pCommand->m_charNumber-1] != pCommand->m_expectedChar)
                     {
                         char msg[200];
-                        sprintf(msg, "Test FAILED - field did not match - expected \'%c\', saw \'%c\'",
-                                pCommand->m_expectedChar, arg->toLocal8Bit().at(pCommand->m_charNumber-1));
+
+                        char c = arg->toLocal8Bit().at(pCommand->m_charNumber-1);
+                        sprintf(msg, "Value: \'%c\'", c);
+                        logStringBlack(msg);
+                        sprintf(msg, "Result: FAILED (field did not match - expected \'%c\', saw \'%c\')", pCommand->m_expectedChar, c);
                         logStringRed(msg);
                         m_errorEncountered = true;
                     }
                     else
                     {
-                        logStringBlack("Test PASSED");
+                        char c = arg->toLocal8Bit().at(pCommand->m_charNumber-1);
+                        sprintf(msg, "Value: \'%c\'", c);
+                        logStringBlack(msg);
+                        logStringBlack("Result: PASSED");
                     }
                 }
+                generateTestTrailer();
                 break;
             }
 
         case CCommand::CMD_EXPECT_STR:
             {
-                logStringBlack(pCommand->m_line.toLocal8Bit());
+                generateTestHeader(pCommand->m_lineNumber);
+                logStringGray(pCommand->m_line.toLocal8Bit());
                 QString line = m_responseBuffer;
                 line = line.trimmed();
                 QStringList args = line.split(QRegExp(" "), QString::SkipEmptyParts);
+                char msg[500];
+                sprintf(msg, "Nominal: \"%s\"", pCommand->m_stringArg.toLocal8Bit().data());
+                logStringBlack(msg);
                 if (pCommand->m_argNumber > args.size())
                 {
-                    logStringRed("Test FAILED reading data from instrument");
+                    logStringRed("Result: FAILED (reading data from instrument)");
                     m_errorEncountered = true;
                 }
                 else
                 {
+                    sprintf(msg, "Value: \"%s\"", args[pCommand->m_argNumber-1].toLocal8Bit().data());
+                    logStringBlack(msg);
                     QString *arg = &args[pCommand->m_argNumber-1];
-                    int argLength = arg->size();
-                    if (pCommand->m_charNumber > argLength)
+                    if (arg != pCommand->m_stringArg)
                     {
-                        logStringRed("Test FAILED - argument length");
-                        m_errorEncountered = true;
-                    }
-                    else if (arg != pCommand->m_stringArg)
-                    {
-                        logStringRed("Test FAILED - expected string not found");
+                        logStringRed("Result: FAILED (expected string not found)");
                         m_errorEncountered = true;
                     }
                     else
                     {
-                        logStringBlack("Test PASSED");
+                        logStringBlack("Result: PASSED");
                     }
                 }
+                generateTestTrailer();
                 break;
             }
 
         case CCommand::CMD_WAITFOR:
         {
-            logStringBlack(pCommand->m_line.toLocal8Bit());
+            logStringGray(pCommand->m_line.toLocal8Bit());
             qApp->processEvents();
             m_errorEncountered = true;
             int timeout = pCommand->params_WAITFOR.m_timeoutMS;
@@ -472,7 +505,7 @@ bool CTestScript::runTest(unsigned int n)
             {
                 QString str = "found string: ";
                 str.append(pCommand->params_WAITFOR.m_expectedString);
-                logStringBlack(str.toLocal8Bit());
+                logStringGray(str.toLocal8Bit());
             }
             break;
         }
@@ -486,12 +519,6 @@ bool CTestScript::runTest(unsigned int n)
                 break;
             }
 
-        case CCommand::CMD_END_SCRIPT:
-        {
-            return(false);
-            break;
-        }
-
         case CCommand::CMD_END_ON_ERROR:
         {
             if (m_errorEncountered)
@@ -501,7 +528,6 @@ bool CTestScript::runTest(unsigned int n)
             }
             break;
         }
-
 
         case CCommand::CMD_UNKNOWN:
         default:
@@ -521,8 +547,6 @@ bool CTestScript::runTest(unsigned int n)
 
     return(true);
 }
-
-
 
 
 
@@ -559,4 +583,70 @@ QString *CTestScript::getTestName(unsigned int n)
     return(&m_commandList[commandIndex].m_stringArg);
 }
 
+void CTestScript::generateTestHeader(int lineNumber)
+{
+    //
+    // Add the test name
+    //
+    logStringBlack(" ");
+    QString TestNameLine = "TestName: ";
+    TestNameLine.append(m_currentTest);
+    logStringBlack(TestNameLine.toLocal8Bit());
+
+    //
+    // Add the test description
+    //
+    if (!m_currentDesc.isEmpty())
+    {
+        QString TestDescLine = "TestDesc: ";
+        TestDescLine.append(m_currentDesc);
+        logStringBlack(TestDescLine.toLocal8Bit());
+    }
+
+    //
+    // Add the test type
+    //
+    QString TestTypeLine = "TestType: ";
+    TestTypeLine.append(m_currentTest);
+    TestTypeLine.append("  ");
+    if (!m_currentDesc.isEmpty())
+    {
+        TestTypeLine.append(m_currentTest);
+    }
+    else
+    {
+        TestTypeLine.append("[line=");
+        QString numStr;
+        numStr.setNum(lineNumber);
+        TestTypeLine.append(numStr);
+        TestTypeLine.append("]");
+    }
+    logStringBlack(TestTypeLine.toLocal8Bit());
+
+    //
+    // Add the Date and Time
+    //
+    time_t rawtime;
+    struct tm *t;
+    time (&rawtime);
+    t = localtime (&rawtime);
+    char    tmpStr[100];
+    sprintf(tmpStr, "%02d/%02d/%04d", t->tm_mon+1, t->tm_mday, t->tm_year+1900);
+    QString line = "Date: ";
+    line.append(tmpStr);
+    logStringBlack(line.toLocal8Bit());
+    sprintf(tmpStr, "%02d:%02d:%02d", t->tm_hour, t->tm_min, t->tm_sec);
+    line = "Time: ";
+    line.append(tmpStr);
+    logStringBlack(line.toLocal8Bit());
+}
+
+
+void CTestScript::generateTestTrailer()
+{
+    //
+    // Add test terminator
+    //
+    logStringBlack("~#~");
+}
 

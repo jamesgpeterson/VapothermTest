@@ -37,6 +37,8 @@ signals:
 
 private:
     int findTestByName(QString &name);
+    void generateTestHeader(int lineNumber);
+    void generateTestTrailer();
 
 private:
     std::vector<CCommand>        m_commandList;
@@ -48,6 +50,8 @@ private:
     int                          m_timeoutA_ms;
     int                          m_timeoutB_ms;
     QString                      m_version;
+    QString                      m_currentTest;
+    QString                      m_currentDesc;
 };
 
 #endif // TESTSCRIPT_H

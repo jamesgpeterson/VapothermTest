@@ -15,7 +15,7 @@ public:
         CMD_VERSION,     // version of the script file
         CMD_COMMENT,     // any line starting with either "#" or "//"
         CMD_TEST,        // test <string>
-        CMD_TYPE,        // type <string>
+        //CMD_TYPE,        // type <string>
         CMD_DESC,        // desc <string>
         CMD_PROMPT,      // prompt <string>
         CMD_PAUSE,       // pause <string>
@@ -26,11 +26,11 @@ public:
         CMD_READLINE_B,  // readline_b
         CMD_FLUSH_A,     // flush pending input from port A
         CMD_FLUSH_B,     // flush pending input from port B
+        CMD_UNITS,       // desctiption of the units used by CMD_EXPECT
         CMD_EXPECT,      // expect <integer field> <integer min> <integer max>
         CMD_EXPECT_CHAR, // expect_char <integer field> <integer char number> <char>
         CMD_EXPECT_STR,  // expect_str <integer field> <string - pattern to match>
         CMD_WAITFOR,     // wait for specified string
-        CMD_END_SCRIPT,
         CMD_END_ON_ERROR
     };
 

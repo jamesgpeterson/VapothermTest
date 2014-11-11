@@ -1,0 +1,19 @@
+scriptVersion 1.23a
+
+test TEST-1
+prompt Question-1A?
+sleep 1000
+prompt Question-1B?
+sleep 1000
+
+test TEST-2
+prompt Question-2A?
+sleep 1000
+prompt Question-2B?
+sleep 1000
+
+test TEST-3
+prompt Question-3A?
+sleep 1000
+prompt Question-3B?
+sleep 1000

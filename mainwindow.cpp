@@ -110,18 +110,17 @@ MainWindow::MainWindow(QWidget *parent) :
     // Report directory
     //
     m_reportDir = m_settings->value("ReportDir", "./").toString();
-    ui->checkBoxGenerateReport->setChecked(m_settings->value("GenerateReport").toBool());
+    ui->checkBoxGenerateReport->setChecked(m_settings->value("GenerateReport", "true").toBool());
 
     //
     // Terminate on Error
     //
-    ui->checkBoxTerminateOnError->setChecked(m_settings->value("TerminateOnError").toBool());
+    ui->checkBoxTerminateOnError->setChecked(m_settings->value("TerminateOnError", "true").toBool());
 
     //
     // Check serial number
     //
-    m_checkSerialNumber = m_settings->value("CheckSerialNumber").toBool();
-
+    m_checkSerialNumber = m_settings->value("CheckSerialNumber", "true").toBool();
 
 
     ui->labelResults->setText(g_stringIdle);
@@ -258,10 +257,24 @@ void MainWindow::startTestsButtonPress()
     m_reportStrings.clear();
 
     //
+    // Check to make sure the comm ports are connected to something
+    //
+    if ( m_checkSerialNumber && (!m_serialPorts[0]->isOpen() || !m_serialPorts[1]->isOpen()) )
+    {
+        logStringRedToWindow("One or more serial port is not connected.");
+        displayWarning("Serial ports A and B must be connected to the device under test and the test fixture, respectively.");
+        ui->labelResults->setText(g_stringNotRun);
+        enableButtonsAfterRun(true);
+        return;
+    }
+
+#if 0
+    //
     // PanelBarcode
     //
-    //line = "PanelBarcode:";
-    //logStringBlack(line.toLocal8Bit());
+    line = "PanelBarcode:";
+    logStringBlack(line.toLocal8Bit());
+#endif
 
     //
     // TestProgram
@@ -284,6 +297,16 @@ void MainWindow::startTestsButtonPress()
     //
     // Operator
     //
+    QString testOperator = ui->lineEditOperator->text().trimmed();
+    if (m_checkSerialNumber && (testOperator.isEmpty()))
+    {
+        logStringRed("Operator not entered.");
+        displayWarning("Must enter the operator name.");
+        ui->labelResults->setText(g_stringNotRun);
+        enableButtonsAfterRun(true);
+        ui->lineEditOperator->setFocus();
+        return;
+    }
     line = "Operator: " + ui->lineEditOperator->text();
     logStringBlack(line.toLocal8Bit());
 
@@ -295,6 +318,15 @@ void MainWindow::startTestsButtonPress()
     {
         logStringRed("Serial number not entered.");
         displayWarning("Serial Number must be entered before tests can be run.");
+        ui->labelResults->setText(g_stringNotRun);
+        enableButtonsAfterRun(true);
+        ui->lineEditSerialNumber->setFocus();
+        return;
+    }
+    if (m_checkSerialNumber && (serialNumber.length() != 10))
+    {
+        logStringRed("Serial number is not of the correct form.");
+        displayWarning("Serial Number must be 10 numeric characters.");
         ui->labelResults->setText(g_stringNotRun);
         enableButtonsAfterRun(true);
         ui->lineEditSerialNumber->setFocus();
@@ -312,7 +344,6 @@ void MainWindow::startTestsButtonPress()
             ui->lineEditSerialNumber->setFocus();
             return;
         }
-
     }
     m_lastSerialNumber = serialNumber;
     QString serialNumberStr = "ImageBarcode: " + serialNumber;
@@ -345,14 +376,16 @@ void MainWindow::startTestsButtonPress()
         QListWidgetItem *item = m_testList[i];
         if (item->checkState() == Qt::Checked)
         {
-            char    tmpStr[100];
-
+#if 0
             //
             // Add the test name
             //
             QString TestNameLine = "TestName: ";
             TestNameLine.append(m_script.getTestName(m_testNumbers[i]));
             logStringBlack(TestNameLine.toLocal8Bit());
+            QString TestTypeLine = "TestType: ";
+            TestTypeLine.append(m_script.getTestName(m_testNumbers[i]));
+            logStringBlack(TestTypeLine.toLocal8Bit());
 
             //
             // Add the Date and Time
@@ -361,6 +394,7 @@ void MainWindow::startTestsButtonPress()
             struct tm *t;
             time (&rawtime);
             t = localtime (&rawtime);
+            char    tmpStr[100];
             sprintf(tmpStr, "%02d/%02d/%04d", t->tm_mon+1, t->tm_mday, t->tm_year+1900);
             line = "Date: ";
             line.append(tmpStr);
@@ -369,6 +403,7 @@ void MainWindow::startTestsButtonPress()
             line = "Time: ";
             line.append(tmpStr);
             logStringBlack(line.toLocal8Bit());
+#endif
 
             //
             // Run the test
@@ -380,32 +415,26 @@ void MainWindow::startTestsButtonPress()
 
                 if (CAbort::Instance()->abortRequested())
                 {
-                    logStringRed("Result: FAILED - Aborted by Operator");
+                    logStringRed("Result: FAILED (Aborted by Operator)");
                     ui->labelResults->setText(g_stringAborted);
                     scriptPassed = false;
                 }
                 else
                 {
-                    logStringRed("Result: FAILED");
+                    //logStringRed("Result: FAILED");
                     scriptPassed = false;
                 }
 
             }
             else
             {
-                logStringBlack("Result: PASSED");
+                //logStringBlack("Result: PASSED");
             }
-
-            //
-            // Add test terminator
-            //
-            logStringBlack("~#~");
 
             if  (terminateOnError && m_script.sawError())
             {
                 break;
             }
-
         }
     }
     if (scriptPassed)
@@ -438,7 +467,6 @@ void MainWindow::startTestsButtonPress()
         {
             QString name("        ");
             name += m_script.getTestName(failedTestList[i]);
-            //QString *name = m_script.getTestName(failedTestList[i]);
             logStringRedToWindow(name.toLocal8Bit());
         }
         logStringRedToWindow("------------------------------------------------------------------------------------------");

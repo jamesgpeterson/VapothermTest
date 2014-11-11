@@ -74,6 +74,7 @@ CCommand::~CCommand()
  *     flush_a                                               - flushes all pending input from port a
  *     flush_b                                               - flushes all pending input from port b
  *     expect <int field> <int min> <int max>                - tests the range of the integer field
+ *     units <string>                                        - provides a description of the units used by the "expect" command
  *     expect_char <int - field> <int - char number> <char>  - tests if specified  character matches
  *     expect_str <int - field> <string>                     - tests the specified field for the string
  *     sleep <int - ms>                                      - sleeps the specified number of milliseconds
@@ -128,6 +129,7 @@ void CCommand::parse(const char *line, int lineNumber)
     }
 
 
+#if 0
     //
     // type
     //
@@ -138,6 +140,7 @@ void CCommand::parse(const char *line, int lineNumber)
         m_stringArg = m_stringArg.trimmed();
         return;
     }
+#endif
 
     //
     // description
@@ -204,6 +207,17 @@ void CCommand::parse(const char *line, int lineNumber)
     if (args[0] == "flush_b")
     {
         m_type = CMD_FLUSH_B;
+        return;
+    }
+
+    //
+    // units
+    //
+    if (args[0] == "units")
+    {
+        m_type = CMD_UNITS;
+        m_stringArg = m_line.right(m_line.size()-5);
+        m_stringArg = m_stringArg.trimmed();
         return;
     }
 
@@ -325,15 +339,6 @@ void CCommand::parse(const char *line, int lineNumber)
         m_type = CMD_PAUSE;
         m_stringArg = m_line.right(m_line.size()-5);
         m_stringArg = m_stringArg.trimmed();
-        return;
-    }
-
-    //
-    // end_script
-    //
-    if (args[0] == "end_script")
-    {
-        m_type = CMD_END_SCRIPT;
         return;
     }
 
