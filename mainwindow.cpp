@@ -21,6 +21,7 @@ QString g_stringPassed        = "<html><head/><body><p><span style=\" font-size:
 QString g_stringFailed        = "<html><head/><body><p><span style=\" font-size:26pt; font-weight:600; color:#F00000;\">Failed</span></p></body></html>";
 QString g_stringNotRun        = "<html><head/><body><p><span style=\" font-size:26pt; font-weight:600; color:#F00000;\">Not Run</span></p></body></html>";
 QString g_stringAborted       = "<html><head/><body><p><span style=\" font-size:20pt; font-weight:600; color:#F00000;\">Aborted</span></p></body></html>";
+char    g_stringSaveReport[]  = "<html><head/><body><p><span style=\" font-size:20pt; font-weight:600; color:#000000;\">Save test report?</span></p></body></html>";
 
 #define NOT_CONNECTED "not connected"
 
@@ -107,12 +108,6 @@ MainWindow::MainWindow(QWidget *parent) :
     }
 
     //
-    // Report directory
-    //
-    m_reportDir = m_settings->value("ReportDir", "./").toString();
-    ui->checkBoxGenerateReport->setChecked(m_settings->value("GenerateReport", "true").toBool());
-
-    //
     // Terminate on Error
     //
     ui->checkBoxTerminateOnError->setChecked(m_settings->value("TerminateOnError", "true").toBool());
@@ -154,7 +149,6 @@ MainWindow::~MainWindow()
     m_settings->setValue("Operator", ui->lineEditOperator->text());
     m_settings->setValue("Script", m_scriptFileName);
     m_settings->setValue("ReportDir", m_reportDir);
-    m_settings->setValue("GenerateReport", ui->checkBoxGenerateReport->isChecked());
     m_settings->setValue("TerminateOnError", ui->checkBoxTerminateOnError->isChecked());
     m_settings->setValue("CheckSerialNumber", m_checkSerialNumber);
 
@@ -475,7 +469,8 @@ void MainWindow::startTestsButtonPress()
     //
     // Write the report file
     //
-    if (ui->checkBoxGenerateReport->isChecked())
+    //if (displayQuestion("Do you want to generate report?"))
+    if (displayQuestion(g_stringSaveReport))
     {
         generateReport();
     }
@@ -484,6 +479,11 @@ void MainWindow::startTestsButtonPress()
     // re-enable the run button
     //
     enableButtonsAfterRun(true);
+
+    //
+    // Set the focus in the serial number edit box
+    //
+    ui->lineEditSerialNumber->setFocus();
 }
 
 

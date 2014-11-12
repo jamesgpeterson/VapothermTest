@@ -241,12 +241,12 @@ bool CTestScript::runTest(unsigned int n)
                 if (reply == QMessageBox::No)
                 {
                     m_errorEncountered = true;
-                    logStringRed("Value: NEGATIVE");
+                    logStringRed("Value: \"NO\"");
                     logStringRed("Result: FAILED (operator inspection)");
                 }
                 else
                 {
-                    logStringBlack("Value: POSITIVE");
+                    logStringBlack("Value: \"YES\"");
                     logStringBlack("Result: PASSED (operator inspection)");
                 }
                 generateTestTrailer();
