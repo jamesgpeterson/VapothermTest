@@ -462,6 +462,22 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>lineEditSerialNumber</sender>
+   <signal>textChanged(QString)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>serialNumberChanged(QString)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>241</x>
+     <y>41</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>258</x>
+     <y>145</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>connectToSerialPortButtonPress()</slot>
@@ -476,5 +492,6 @@
   <slot>clearButtonPressed()</slot>
   <slot>selectAllTests()</slot>
   <slot>clearAllTests()</slot>
+  <slot>serialNumberChanged(QString)</slot>
  </slots>
 </ui>

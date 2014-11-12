@@ -985,3 +985,22 @@ void MainWindow::enableButtonsAfterRun(bool enable)
     ui->pushButton_ReloadScript->setEnabled(enable);
     ui->pushButton_Abort->setEnabled(!enable);
 }
+
+
+void MainWindow::serialNumberChanged(QString serialNumber)
+{
+    const int serialNumberLength = 10;
+
+    int length = serialNumber.length();
+    if (!serialNumber[length-1].isNumber())
+    {
+        serialNumber = serialNumber.left(--length);
+        ui->lineEditSerialNumber->setText(serialNumber);
+    }
+
+    if (length > serialNumberLength)
+    {
+        serialNumber = serialNumber.right(serialNumberLength);
+        ui->lineEditSerialNumber->setText(serialNumber);
+    }
+}

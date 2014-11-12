@@ -46,6 +46,7 @@ public slots:
     void reloadScriptButtonPress();
     void commPortSelected_A(QString deviceName);
     void commPortSelected_B(QString deviceName);
+    void serialNumberChanged(QString serialNumber);
     void abortButtonPress();
     void clearButtonPressed();
     void enableButtonsAfterRun(bool enable);
