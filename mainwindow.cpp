@@ -108,6 +108,15 @@ MainWindow::MainWindow(QWidget *parent) :
     }
 
     //
+    // report directory
+    //
+    m_reportDir = m_settings->value("ReportDir", "").toString();
+    if (!m_reportDir.endsWith("/") && !m_reportDir.endsWith("\\"))
+    {
+        m_reportDir.append("/");
+    }
+
+    //
     // Terminate on Error
     //
     ui->checkBoxTerminateOnError->setChecked(m_settings->value("TerminateOnError", "true").toBool());
@@ -372,34 +381,6 @@ void MainWindow::startTestsButtonPress()
         QListWidgetItem *item = m_testList[i];
         if (item->checkState() == Qt::Checked)
         {
-#if 0
-            //
-            // Add the test name
-            //
-            QString TestNameLine = "TestName: ";
-            TestNameLine.append(m_script.getTestName(m_testNumbers[i]));
-            logStringBlack(TestNameLine.toLocal8Bit());
-            QString TestTypeLine = "TestType: ";
-            TestTypeLine.append(m_script.getTestName(m_testNumbers[i]));
-            logStringBlack(TestTypeLine.toLocal8Bit());
-
-            //
-            // Add the Date and Time
-            //
-            time_t rawtime;
-            struct tm *t;
-            time (&rawtime);
-            t = localtime (&rawtime);
-            char    tmpStr[100];
-            sprintf(tmpStr, "%02d/%02d/%04d", t->tm_mon+1, t->tm_mday, t->tm_year+1900);
-            line = "Date: ";
-            line.append(tmpStr);
-            logStringBlack(line.toLocal8Bit());
-            sprintf(tmpStr, "%02d:%02d:%02d", t->tm_hour, t->tm_min, t->tm_sec);
-            line = "Time: ";
-            line.append(tmpStr);
-            logStringBlack(line.toLocal8Bit());
-#endif
 
             //
             // Run the test
