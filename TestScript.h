@@ -52,6 +52,8 @@ private:
     QString                      m_version;
     QString                      m_currentTest;
     QString                      m_currentDesc;
+    QString                      m_currentUnits;
+
 };
 
 #endif // TESTSCRIPT_H

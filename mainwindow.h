@@ -12,7 +12,7 @@
 
 #include "TestScript.h"
 
-#define VERSION_STRING "1.0.014"
+#define VERSION_STRING "1.0.015"
 
 namespace Ui
 {

@@ -359,6 +359,8 @@ void MainWindow::startTestsButtonPress()
     unsigned int testCount = m_testList.size();
     for (unsigned int i=0; i<testCount; i++)
     {
+        ui->listWidget->setCurrentRow(i);
+
         if ((CAbort::Instance()->abortRequested()) || (m_script.terminatedEarly()))
         {
             ui->labelResults->setText(g_stringAborted);

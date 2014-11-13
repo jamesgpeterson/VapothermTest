@@ -2,18 +2,80 @@ scriptVersion 1.23a
 
 test TEST-1
 prompt Question-1A?
-sleep 1000
-prompt Question-1B?
-sleep 1000
+sleep 300
 
 test TEST-2
 prompt Question-2A?
-sleep 1000
-prompt Question-2B?
-sleep 1000
+sleep 300
 
 test TEST-3
 prompt Question-3A?
-sleep 1000
-prompt Question-3B?
-sleep 1000
+sleep 300
+
+test TEST-4
+prompt Question-4A?
+sleep 300
+
+test TEST-5
+prompt Question-5A?
+sleep 300
+
+test TEST-6
+prompt Question-6A?
+sleep 300
+
+test TEST-7
+prompt Question-7A?
+sleep 300
+
+test TEST-8
+prompt Question-8A?
+sleep 300
+
+test TEST-9
+prompt Question-9A?
+sleep 300
+
+test TEST-10
+prompt Question-10A?
+sleep 300
+
+test TEST-11
+prompt Question-11A?
+sleep 300
+
+test TEST-12
+prompt Question-12A?
+sleep 300
+
+test TEST-13
+prompt Question-13A?
+sleep 300
+
+test TEST-14
+prompt Question-14A?
+sleep 300
+
+test TEST-15
+prompt Question-15A?
+sleep 300
+
+test TEST-16
+prompt Question-16A?
+sleep 300
+
+test TEST-17
+prompt Question-17A?
+sleep 300
+
+test TEST-18
+prompt Question-18A?
+sleep 300
+
+test TEST-19
+prompt Question-19A?
+sleep 300
+
+test TEST-20
+prompt Question-20A?
+sleep 300

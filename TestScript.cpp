@@ -196,6 +196,8 @@ bool CTestScript::runTest(unsigned int n)
             case CCommand::CMD_TEST:
             {
                 m_currentTest = pCommand->m_stringArg;
+                m_currentDesc.clear();
+                m_currentUnits.clear();
                 break;
             }
 
@@ -334,9 +336,10 @@ bool CTestScript::runTest(unsigned int n)
 
             case CCommand::CMD_UNITS:
             {
-                QString line = "Units: ";
-                line.append(pCommand->m_stringArg);
-                logStringBlack(line.toLocal8Bit());
+                m_currentUnits = pCommand->m_stringArg;
+                //QString line = "Units: ";
+                //line.append(pCommand->m_stringArg);
+                //logStringGray(line);
                 break;
             }
 
@@ -611,7 +614,7 @@ void CTestScript::generateTestHeader(int lineNumber)
     TestTypeLine.append("  ");
     if (!m_currentDesc.isEmpty())
     {
-        TestTypeLine.append(m_currentTest);
+        TestTypeLine.append(m_currentDesc);
     }
     else
     {
@@ -639,6 +642,16 @@ void CTestScript::generateTestHeader(int lineNumber)
     line = "Time: ";
     line.append(tmpStr);
     logStringBlack(line.toLocal8Bit());
+
+    //
+    // Add Units
+    //
+    if (!m_currentUnits.isEmpty())
+    {
+        QString unitsLine = "Units: ";
+        unitsLine.append(m_currentUnits);
+        logStringBlack(unitsLine.toLocal8Bit());
+    }
 }
 
 
