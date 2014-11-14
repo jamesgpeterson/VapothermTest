@@ -1,7 +1,10 @@
 scriptVersion 1.23a
 
 test TEST-1
+desc first question
 prompt Question-1A?
+desc second question
+prompt Question-1B?
 sleep 300
 
 test TEST-2

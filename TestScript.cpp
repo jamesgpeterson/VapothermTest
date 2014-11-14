@@ -233,7 +233,7 @@ bool CTestScript::runTest(unsigned int n)
             case CCommand::CMD_PROMPT:
             {
                 generateTestHeader(pCommand->m_lineNumber);
-
+                logStringBlack("Nominal: \"YES\"");
                 QMessageBox::StandardButton reply;
                 QString title = "VapoTherm Test";
                 QString prefix = "<font size=20>";
@@ -594,6 +594,11 @@ void CTestScript::generateTestHeader(int lineNumber)
     logStringBlack(" ");
     QString TestNameLine = "TestName: ";
     TestNameLine.append(m_currentTest);
+    TestNameLine.append("  [line=");
+    QString numStr;
+    numStr.setNum(lineNumber);
+    TestNameLine.append(numStr);
+    TestNameLine.append("]");
     logStringBlack(TestNameLine.toLocal8Bit());
 
     //
@@ -614,7 +619,9 @@ void CTestScript::generateTestHeader(int lineNumber)
     TestTypeLine.append("  ");
     if (!m_currentDesc.isEmpty())
     {
+        TestTypeLine.append("[");
         TestTypeLine.append(m_currentDesc);
+        TestTypeLine.append("]");
     }
     else
     {

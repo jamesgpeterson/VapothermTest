@@ -111,7 +111,7 @@ MainWindow::MainWindow(QWidget *parent) :
     // report directory
     //
     m_reportDir = m_settings->value("ReportDir", "").toString();
-    if (!m_reportDir.endsWith("/") && !m_reportDir.endsWith("\\"))
+    if (!m_reportDir.isEmpty() && (!m_reportDir.endsWith("/") && !m_reportDir.endsWith("\\")))
     {
         m_reportDir.append("/");
     }
@@ -917,6 +917,19 @@ void MainWindow::abortButtonPress()
 bool MainWindow::generateReport()
 {
     //
+    //
+    //
+    QString normalizedDir = m_reportDir;
+    for (int i=normalizedDir.size()-1; i>=0; i--)
+    {
+        if (normalizedDir.at(i) == '/')
+        {
+            normalizedDir.data()[i] = '\\';
+        }
+    }
+
+
+    //
     // create the filename
     //
     time_t rawtime;
@@ -925,7 +938,7 @@ bool MainWindow::generateReport()
     t = localtime (&rawtime);
     char filename[100];
     sprintf(filename, "%s%02d%02d%04d_%02d%02d%02d.txt",
-            m_reportDir.toLocal8Bit().data(),
+            normalizedDir.toLocal8Bit().data(),
             t->tm_mon+1, t->tm_mday, t->tm_year+1900,
             t->tm_hour, t->tm_min, t->tm_sec);
 

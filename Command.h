@@ -15,7 +15,6 @@ public:
         CMD_VERSION,     // version of the script file
         CMD_COMMENT,     // any line starting with either "#" or "//"
         CMD_TEST,        // test <string>
-        //CMD_TYPE,        // type <string>
         CMD_DESC,        // desc <string>
         CMD_PROMPT,      // prompt <string>
         CMD_PAUSE,       // pause <string>
