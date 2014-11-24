@@ -9,28 +9,29 @@
 #include <QListWidget>
 #include <QString>
 #include <QSettings>
+#include <QtSql/QSqlDatabase>
+
 
 #include "TestScript.h"
 
-#define VERSION_STRING "1.0.017"
+#define VERSION_STRING "1.0.018"
 
 namespace Ui
 {
     class MainWindow;
 }
 
-
+#if 0
 class CSettings
 {
      QString Script;
-     QString Jim;
      QString PortA;
      QString PortB;
      bool    TerminateOnError;
-
      QString ReportDir;
      int     OutputDelayMS;
 };
+#endif
 
 class MainWindow : public QMainWindow
 {
@@ -72,6 +73,8 @@ private:
     bool displayQuestion(const char *msg);
     void displayCommandPrompt();
     void displayReplyPrompt();
+    bool connectToDatabase();
+    bool serialNumberIsInDB(QString serialNumber);
 
 private:
     Ui::MainWindow *ui;
@@ -96,6 +99,8 @@ private:
     QString     m_reportDir;
     QString     m_lastSerialNumber;
     bool        m_checkSerialNumber;
+
+    QSqlDatabase m_db;
 };
 
 

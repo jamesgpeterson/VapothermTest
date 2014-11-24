@@ -8,6 +8,10 @@
 #include <QFileDialog>
 #include <QSerialPortInfo>
 #include <QDateTime>
+#include <QtSql/QSql>
+#include <QtSql/QSqlError>
+#include <QtSql/QSqlQuery>
+#include <QDebug>
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "Abort.h"
@@ -82,13 +86,6 @@ MainWindow::MainWindow(QWidget *parent) :
     QString portB = m_settings->value("PortB", NOT_CONNECTED).toString();
     commPortSelected_B(portB);
 
-
-    //
-    // operator
-    //
-    QString operatorStr = m_settings->value("Operator", "").toString();
-    ui->lineEditOperator->setText(operatorStr);
-
     //
     // Delay between characters on output
     // and timeout values
@@ -126,6 +123,10 @@ MainWindow::MainWindow(QWidget *parent) :
     //
     m_checkSerialNumber = m_settings->value("CheckSerialNumber", "true").toBool();
 
+    //
+    // Connect to the database for Serial Number validataion
+    //
+    //connectToDatabase();
 
     ui->labelResults->setText(g_stringIdle);
 }
@@ -133,6 +134,11 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow()
 {
+    //
+    // Close connection to the database.
+    //
+    m_db.close();
+
     if (m_serialPorts[0]->isOpen())
     {
         m_settings->setValue("PortA", m_serialPorts[0]->portName());
@@ -155,7 +161,6 @@ MainWindow::~MainWindow()
         m_settings->setValue("PortB", "not connected");
     }
 
-    m_settings->setValue("Operator", ui->lineEditOperator->text());
     m_settings->setValue("Script", m_scriptFileName);
     m_settings->setValue("ReportDir", m_reportDir);
     m_settings->setValue("TerminateOnError", ui->checkBoxTerminateOnError->isChecked());
@@ -348,6 +353,15 @@ void MainWindow::startTestsButtonPress()
             return;
         }
     }
+    if (/*m_checkSerialNumber && */ !serialNumberIsInDB(serialNumber) )
+    {
+        logStringRed("Serial number is not in the database.");
+        displayWarning("Serial number is not in the database.");
+        ui->labelResults->setText(g_stringNotRun);
+        enableButtonsAfterRun(true);
+        ui->lineEditSerialNumber->setFocus();
+        return;
+    }
     m_lastSerialNumber = serialNumber;
     QString serialNumberStr = "ImageBarcode: " + serialNumber;
     logStringBlack(serialNumberStr.toLocal8Bit());
@@ -398,14 +412,9 @@ void MainWindow::startTestsButtonPress()
                 }
                 else
                 {
-                    //logStringRed("Result: FAILED");
                     scriptPassed = false;
                 }
 
-            }
-            else
-            {
-                //logStringBlack("Result: PASSED");
             }
 
             if  (terminateOnError && m_script.sawError())
@@ -583,8 +592,6 @@ void MainWindow::logCommand(const char *cmd)
     QString comment = cmd;
     comment.remove(0, command.length());
 
-    QColor saveColor = ui->textEditResults->textColor();
-
     ui->textEditResults->moveCursor (QTextCursor::End);
     ui->textEditResults->insertPlainText (">> ");
 
@@ -597,8 +604,9 @@ void MainWindow::logCommand(const char *cmd)
     ui->textEditResults->insertPlainText(comment);
 
     ui->textEditResults->moveCursor (QTextCursor::End);
-    ui->textEditResults->setTextColor(saveColor);
     ui->textEditResults->insertPlainText ("\r\n");
+    ui->textEditResults->moveCursor (QTextCursor::End);
+    ui->textEditResults->setTextColor(QColor( "black" ));
     qApp->processEvents();    
 }
 
@@ -777,18 +785,13 @@ bool MainWindow::readVapoThermResponse(int portIndex, char *buffer, const int bu
 
 void MainWindow::logStringRed(const char *string)
 {
-    QColor saveColor = ui->textEditResults->textColor();
-    qreal saveFontSize = ui->textEditResults->fontPointSize();
-
     ui->textEditResults->moveCursor (QTextCursor::End);
     ui->textEditResults->setTextColor(QColor( "red" ));
-    //ui->textEditResults->setFontPointSize(12.0);
     ui->textEditResults->insertPlainText(string);
     ui->textEditResults->moveCursor (QTextCursor::End);
-
-    ui->textEditResults->setFontPointSize(saveFontSize);
-    ui->textEditResults->setTextColor(saveColor);
     ui->textEditResults->insertPlainText ("\r\n");
+    ui->textEditResults->moveCursor (QTextCursor::End);
+    ui->textEditResults->setTextColor(QColor( "black" ));
     qApp->processEvents();
 
     m_reportStrings.push_back(string);
@@ -800,9 +803,9 @@ void MainWindow::logStringRedToWindow(const char *string)
     ui->textEditResults->setTextColor(QColor("red"));
     ui->textEditResults->insertPlainText(string);
     ui->textEditResults->moveCursor (QTextCursor::End);
-
-    ui->textEditResults->setTextColor(QColor( "black" ));
     ui->textEditResults->insertPlainText ("\r\n");
+    ui->textEditResults->moveCursor (QTextCursor::End);
+    ui->textEditResults->setTextColor(QColor( "black" ));
     qApp->processEvents();
 }
 
@@ -810,13 +813,13 @@ void MainWindow::logStringRedToWindow(const char *string)
 
 void MainWindow::logStringGray(const char *string)
 {
-    QColor saveColor = ui->textEditResults->textColor();
     ui->textEditResults->moveCursor (QTextCursor::End);
     ui->textEditResults->setTextColor(QColor( "gray" ));
     ui->textEditResults->insertPlainText(string);
     ui->textEditResults->moveCursor (QTextCursor::End);
-    ui->textEditResults->setTextColor(saveColor);
     ui->textEditResults->insertPlainText ("\r\n");
+    ui->textEditResults->moveCursor (QTextCursor::End);
+    ui->textEditResults->setTextColor(QColor( "black" ));
     qApp->processEvents();
 }
 
@@ -824,12 +827,10 @@ void MainWindow::logStringGray(const char *string)
 
 void MainWindow::logStringBlack(const char *string)
 {
-    QColor saveColor = ui->textEditResults->textColor();
     ui->textEditResults->moveCursor (QTextCursor::End);
     ui->textEditResults->setTextColor(QColor( "black" ));
     ui->textEditResults->insertPlainText(string);
     ui->textEditResults->moveCursor (QTextCursor::End);
-    ui->textEditResults->setTextColor(saveColor);
     ui->textEditResults->insertPlainText ("\r\n");
     qApp->processEvents();
 
@@ -1000,3 +1001,69 @@ void MainWindow::serialNumberChanged(QString serialNumber)
         ui->lineEditSerialNumber->setText(serialNumber);
     }
 }
+
+
+bool MainWindow::connectToDatabase()
+{
+    const QString serverName   = "ENFS3";
+    const QString databaseName = "EnerconUtilities";
+    const QString databaseType = "QODBC";
+    const QString username     = "eu_ro";
+    const QString password     = "ET657&me";
+
+    QString connectionString = "DRIVER={SQL SERVER};SERVER=%1;DATABASE=%2;";
+    connectionString = connectionString.arg(serverName).arg(databaseName);
+    m_db = QSqlDatabase::addDatabase(databaseType);
+    m_db.setDatabaseName(connectionString);
+
+    QString message;
+    logStringGray("Connecting to Database:");
+    message = "    Server = ";
+    message.append(serverName);
+    logStringGray(message.toLocal8Bit());
+    message = "    Database = ";
+    message.append(databaseName);
+    logStringGray(message.toLocal8Bit());
+
+    if (!m_db.open(username, password))
+    {
+        QSqlError err = m_db.lastError();
+        message = "Failed to connect to database.\n";
+        message.append(err.text());
+        message.append("\n\nCannot validate serial number.");
+        displayWarning(message.toLocal8Bit());
+        return(false);
+    }
+
+    return(true);
+}
+
+
+bool MainWindow::serialNumberIsInDB(QString serialNumber)
+{
+    const QString ZNumber      = "Z4001-01";
+
+    //
+    // Connect to the database if this is the first time.
+    //
+    if (!m_db.isOpen())
+        connectToDatabase();
+
+    //
+    // Query the database
+    //
+    QString queryStr;
+    queryStr.append("SELECT SNLogDetail.Job, SNLogDetail.Suffix ");
+    queryStr.append("FROM EnerconUtilities.dbo.SNLogDetail (NOLOCK) ");
+    queryStr.append("INNER JOIN EnerconUtilities.dbo.SNLog2 (NOLOCK) ");
+    queryStr.append("ON SNLogDetail.RecordNo = SNLog2.RecordNo ");
+    queryStr.append("WHERE SNLogDetail.SN1='%1' AND SNLog2.[Z Number] ='%2'");
+    queryStr = queryStr.arg(serialNumber).arg(ZNumber);
+    QSqlQuery query(queryStr, m_db);
+
+    //
+    // If there is a least one record then the serial number is in the database.
+    //
+    return(query.next());
+}
+
