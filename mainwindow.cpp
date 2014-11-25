@@ -79,23 +79,6 @@ MainWindow::MainWindow(QWidget *parent) :
     m_settings->sync();
 
     //
-    // Comm Ports
-    //
-    QString portA = m_settings->value("PortA", NOT_CONNECTED).toString();
-    commPortSelected_A(portA);
-    QString portB = m_settings->value("PortB", NOT_CONNECTED).toString();
-    commPortSelected_B(portB);
-
-    //
-    // Delay between characters on output
-    // and timeout values
-    //
-    m_outputDelay_ms = m_settings->value("OutputDelayMS", 120).toInt();
-    m_timeoutA_ms = m_settings->value("TimeoutMS_A", 100).toInt();
-    m_timeoutB_ms = m_settings->value("TimeoutMS_B", 100).toInt();
-
-
-    //
     // script filename
     //
     m_scriptFileName = m_settings->value("Script", "").toString();
@@ -116,18 +99,35 @@ MainWindow::MainWindow(QWidget *parent) :
     //
     // Terminate on Error
     //
-    ui->checkBoxTerminateOnError->setChecked(m_settings->value("TerminateOnError", "true").toBool());
+    ui->checkBoxTerminateOnError->setChecked(m_settings->value("TerminateOnError", "false").toBool());
 
     //
-    // Check serial number
+    // Serial parameters
     //
-    m_checkSerialNumber = m_settings->value("CheckSerialNumber", "true").toBool();
+    m_checkSerialConnections = m_settings->value("Serial/CheckConnections", "true").toBool();
+    m_outputDelay_ms = m_settings->value("Serial/OutputDelayMS", 120).toInt();
+    m_timeoutA_ms = m_settings->value("Serial/TimeoutMS_A", 100).toInt();
+    m_timeoutB_ms = m_settings->value("Serial/TimeoutMS_B", 100).toInt();
+    QString portA = m_settings->value("Serial/PortA", NOT_CONNECTED).toString();
+    QString portB = m_settings->value("Serial/PortB", NOT_CONNECTED).toString();
+    commPortSelected_A(portA);
+    commPortSelected_B(portB);
+
 
     //
-    // Connect to the database for Serial Number validataion
+    // Database parameters
     //
-    //connectToDatabase();
+    m_validateSerial = m_settings->value("Database/ValidateSerialNumber", "false").toBool();
+    m_databaseServer = m_settings->value("Database/databaseServer", "").toString(); // "ENFS3"
+    m_databaseName   = m_settings->value("Database/databaseName", "").toString();   // "EnerconUtilities"
+    m_databaseUser   = m_settings->value("Database/databaseUser", "").toString();   // "eu_ro"
+    m_databasePwd    = m_settings->value("Database/databasePwd", "").toString();    // "ET657&me"
+    m_databaseZNum   = m_settings->value("Database/databaseZNum", "").toString();   // "Z4001-01"
 
+
+    //
+    // Clear the results window.
+    //
     ui->labelResults->setText(g_stringIdle);
 }
 
@@ -139,36 +139,48 @@ MainWindow::~MainWindow()
     //
     m_db.close();
 
+    m_settings->setValue("Script", m_scriptFileName);
+    m_settings->setValue("ReportDir", m_reportDir);
+    m_settings->setValue("TerminateOnError", ui->checkBoxTerminateOnError->isChecked());
+
+    //
+    // Serial Parameters
+    //
+    m_settings->setValue("Serial/CheckConnections", m_checkSerialConnections);
+    m_settings->setValue("Serial/OutputDelayMS", m_outputDelay_ms);
+    m_settings->setValue("Serial/TimeoutMS_A", m_timeoutA_ms);
+    m_settings->setValue("Serial/TimeoutMS_B", m_timeoutB_ms);
     if (m_serialPorts[0]->isOpen())
     {
-        m_settings->setValue("PortA", m_serialPorts[0]->portName());
+        m_settings->setValue("Serial/PortA", m_serialPorts[0]->portName());
         m_serialPorts[0]->clear();
         m_serialPorts[0]->close();
     }
     else
     {
-        m_settings->setValue("PortA", "not connected");
+        m_settings->setValue("Serial/PortA", "not connected");
     }
-
     if (m_serialPorts[1]->isOpen())
     {
-        m_settings->setValue("PortB", m_serialPorts[1]->portName());
+        m_settings->setValue("SerialPortB", m_serialPorts[1]->portName());
         m_serialPorts[1]->clear();
         m_serialPorts[1]->close();
     }
     else
     {
-        m_settings->setValue("PortB", "not connected");
+        m_settings->setValue("Serial/PortB", "not connected");
     }
 
-    m_settings->setValue("Script", m_scriptFileName);
-    m_settings->setValue("ReportDir", m_reportDir);
-    m_settings->setValue("TerminateOnError", ui->checkBoxTerminateOnError->isChecked());
-    m_settings->setValue("CheckSerialNumber", m_checkSerialNumber);
+    //
+    // Database parameters
+    //
+    m_settings->setValue("Database/ValidateSerialNumber", m_validateSerial);
+    m_settings->setValue("Database/databaseServer", m_databaseServer);
+    m_settings->setValue("Database/databaseName",   m_databaseName);
+    m_settings->setValue("Database/databaseUser",   m_databaseUser);
+    m_settings->setValue("Database/databasePwd",    m_databasePwd);
+    m_settings->setValue("Database/databaseZNum",   m_databaseZNum);
 
-    m_settings->setValue("OutputDelayMS", m_outputDelay_ms);
-    m_settings->setValue("TimeoutMS_A", m_timeoutA_ms);
-    m_settings->setValue("TimeoutMS_B", m_timeoutB_ms);
 
     m_settings->sync();
     delete ui;
@@ -267,7 +279,7 @@ void MainWindow::startTestsButtonPress()
     //
     // Check to make sure the comm ports are connected to something
     //
-    if ( m_checkSerialNumber && (!m_serialPorts[0]->isOpen() || !m_serialPorts[1]->isOpen()) )
+    if ( m_checkSerialConnections && (!m_serialPorts[0]->isOpen() || !m_serialPorts[1]->isOpen()) )
     {
         logStringRedToWindow("One or more serial port is not connected.");
         displayWarning("Serial ports A and B must be connected to the device under test and the test fixture, respectively.");
@@ -276,13 +288,6 @@ void MainWindow::startTestsButtonPress()
         return;
     }
 
-#if 0
-    //
-    // PanelBarcode
-    //
-    line = "PanelBarcode:";
-    logStringBlack(line.toLocal8Bit());
-#endif
 
     //
     // TestProgram
@@ -306,7 +311,7 @@ void MainWindow::startTestsButtonPress()
     // Operator
     //
     QString testOperator = ui->lineEditOperator->text().trimmed();
-    if (m_checkSerialNumber && (testOperator.isEmpty()))
+    if (testOperator.isEmpty())
     {
         logStringRed("Operator not entered.");
         displayWarning("Must enter the operator name.");
@@ -322,7 +327,7 @@ void MainWindow::startTestsButtonPress()
     // ImageBarcode
     //
     QString serialNumber = ui->lineEditSerialNumber->text().trimmed();
-    if (m_checkSerialNumber && (serialNumber.isEmpty()))
+    if (serialNumber.isEmpty())
     {
         logStringRed("Serial number not entered.");
         displayWarning("Serial Number must be entered before tests can be run.");
@@ -331,7 +336,7 @@ void MainWindow::startTestsButtonPress()
         ui->lineEditSerialNumber->setFocus();
         return;
     }
-    if (m_checkSerialNumber && (serialNumber.length() != 10))
+    if (serialNumber.length() != 10)
     {
         logStringRed("Serial number is not of the correct form.");
         displayWarning("Serial Number must be 10 numeric characters.");
@@ -340,7 +345,7 @@ void MainWindow::startTestsButtonPress()
         ui->lineEditSerialNumber->setFocus();
         return;
     }
-    if (m_checkSerialNumber && (serialNumber == m_lastSerialNumber))
+    if (serialNumber == m_lastSerialNumber)
     {
         QString msg = "Run again with last serial number (";
         msg.append(serialNumber);
@@ -353,7 +358,7 @@ void MainWindow::startTestsButtonPress()
             return;
         }
     }
-    if (/*m_checkSerialNumber && */ !serialNumberIsInDB(serialNumber) )
+    if ( m_validateSerial &&  !serialNumberIsInDB(serialNumber) )
     {
         logStringRed("Serial number is not in the database.");
         displayWarning("Serial number is not in the database.");
@@ -1003,29 +1008,29 @@ void MainWindow::serialNumberChanged(QString serialNumber)
 }
 
 
+
 bool MainWindow::connectToDatabase()
 {
-    const QString serverName   = "ENFS3";
-    const QString databaseName = "EnerconUtilities";
-    const QString databaseType = "QODBC";
-    const QString username     = "eu_ro";
-    const QString password     = "ET657&me";
+    //const QString serverName   = "ENFS3";
+    //const QString databaseName = "EnerconUtilities";
+    //const QString username     = "eu_ro";
+    //const QString password     = "ET657&me";
 
     QString connectionString = "DRIVER={SQL SERVER};SERVER=%1;DATABASE=%2;";
-    connectionString = connectionString.arg(serverName).arg(databaseName);
-    m_db = QSqlDatabase::addDatabase(databaseType);
+    connectionString = connectionString.arg(m_databaseServer).arg(m_databaseName);
+    m_db = QSqlDatabase::addDatabase("QODBC");
     m_db.setDatabaseName(connectionString);
 
     QString message;
     logStringGray("Connecting to Database:");
     message = "    Server = ";
-    message.append(serverName);
+    message.append(m_databaseServer);
     logStringGray(message.toLocal8Bit());
     message = "    Database = ";
-    message.append(databaseName);
+    message.append(m_databaseName);
     logStringGray(message.toLocal8Bit());
 
-    if (!m_db.open(username, password))
+    if (!m_db.open(m_databaseUser, m_databasePwd))
     {
         QSqlError err = m_db.lastError();
         message = "Failed to connect to database.\n";
@@ -1041,7 +1046,7 @@ bool MainWindow::connectToDatabase()
 
 bool MainWindow::serialNumberIsInDB(QString serialNumber)
 {
-    const QString ZNumber      = "Z4001-01";
+    //const QString ZNumber      = "Z4001-01";
 
     //
     // Connect to the database if this is the first time.
@@ -1058,7 +1063,7 @@ bool MainWindow::serialNumberIsInDB(QString serialNumber)
     queryStr.append("INNER JOIN EnerconUtilities.dbo.SNLog2 (NOLOCK) ");
     queryStr.append("ON SNLogDetail.RecordNo = SNLog2.RecordNo ");
     queryStr.append("WHERE SNLogDetail.SN1='%1' AND SNLog2.[Z Number] ='%2'");
-    queryStr = queryStr.arg(serialNumber).arg(ZNumber);
+    queryStr = queryStr.arg(serialNumber).arg(m_databaseZNum);
     QSqlQuery query(queryStr, m_db);
 
     //
@@ -1066,4 +1071,6 @@ bool MainWindow::serialNumberIsInDB(QString serialNumber)
     //
     return(query.next());
 }
+
+
 

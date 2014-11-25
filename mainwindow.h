@@ -21,17 +21,6 @@ namespace Ui
     class MainWindow;
 }
 
-#if 0
-class CSettings
-{
-     QString Script;
-     QString PortA;
-     QString PortB;
-     bool    TerminateOnError;
-     QString ReportDir;
-     int     OutputDelayMS;
-};
-#endif
 
 class MainWindow : public QMainWindow
 {
@@ -98,9 +87,15 @@ private:
     QString     m_scriptFileName;
     QString     m_reportDir;
     QString     m_lastSerialNumber;
-    bool        m_checkSerialNumber;
+    bool        m_checkSerialConnections;
 
     QSqlDatabase m_db;
+    bool    m_validateSerial;
+    QString m_databaseServer;
+    QString m_databaseName;
+    QString m_databaseUser;
+    QString m_databasePwd;
+    QString m_databaseZNum;
 };
 
 
