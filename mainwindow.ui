@@ -18,7 +18,7 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>150</y>
+      <y>160</y>
       <width>131</width>
       <height>31</height>
      </rect>
@@ -36,9 +36,9 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>60</y>
+      <y>50</y>
       <width>281</width>
-      <height>81</height>
+      <height>71</height>
      </rect>
     </property>
     <property name="title">
@@ -58,7 +58,7 @@
      <property name="geometry">
       <rect>
        <x>160</x>
-       <y>50</y>
+       <y>40</y>
        <width>111</width>
        <height>22</height>
       </rect>
@@ -84,7 +84,7 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>50</y>
+       <y>40</y>
        <width>141</width>
        <height>16</height>
       </rect>
@@ -195,7 +195,7 @@
     <property name="geometry">
      <rect>
       <x>160</x>
-      <y>150</y>
+      <y>160</y>
       <width>131</width>
       <height>31</height>
      </rect>
@@ -213,9 +213,9 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>190</y>
+      <y>200</y>
       <width>281</width>
-      <height>51</height>
+      <height>41</height>
      </rect>
     </property>
     <property name="font">
@@ -263,6 +263,19 @@
     </property>
     <property name="text">
      <string>Clear All</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="checkBoxTerminateOnError">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>130</y>
+      <width>161</width>
+      <height>17</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Terminate on First Error</string>
     </property>
    </widget>
   </widget>
@@ -321,7 +334,7 @@
    <hints>
     <hint type="sourcelabel">
      <x>170</x>
-     <y>122</y>
+     <y>112</y>
     </hint>
     <hint type="destinationlabel">
      <x>8</x>
@@ -337,7 +350,7 @@
    <hints>
     <hint type="sourcelabel">
      <x>170</x>
-     <y>152</y>
+     <y>132</y>
     </hint>
     <hint type="destinationlabel">
      <x>5</x>
@@ -441,6 +454,22 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>checkBoxTerminateOnError</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>terminateCheckboxClicked()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>132</x>
+     <y>158</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>216</x>
+     <y>146</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>connectToSerialPortButtonPress()</slot>
@@ -456,5 +485,6 @@
   <slot>selectAllTests()</slot>
   <slot>clearAllTests()</slot>
   <slot>serialNumberChanged(QString)</slot>
+  <slot>terminateCheckboxClicked()</slot>
  </slots>
 </ui>

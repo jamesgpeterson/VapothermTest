@@ -42,6 +42,7 @@ public slots:
     void enableButtonsAfterRun(bool enable);
     void selectAllTests();
     void clearAllTests();
+    void terminateCheckboxClicked();
 
 
     void logStringBlack(const char *string);

@@ -1087,4 +1087,8 @@ bool MainWindow::serialNumberIsInDB(QString serialNumber)
 }
 
 
+void MainWindow::terminateCheckboxClicked()
+{
+    m_terminateOnFirstError = ui->checkBoxTerminateOnError->isChecked();
+}
 
