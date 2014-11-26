@@ -99,7 +99,8 @@ MainWindow::MainWindow(QWidget *parent) :
     //
     // Terminate on Error
     //
-    ui->checkBoxTerminateOnError->setChecked(m_settings->value("TerminateOnError", "false").toBool());
+    m_terminateOnFirstError = m_settings->value("TerminateOnError", "false").toBool();
+    //ui->checkBoxTerminateOnError->setChecked(m_settings->value("TerminateOnError", "false").toBool());
 
     //
     // Serial parameters
@@ -137,11 +138,19 @@ MainWindow::~MainWindow()
     //
     // Close connection to the database.
     //
-    m_db.close();
+    m_database.close();
 
+    //
+    // Clear any ini file lines that are obsolete
+    //
+    m_settings->clear();
+
+    //
+    // General Parameters
+    //
     m_settings->setValue("Script", m_scriptFileName);
     m_settings->setValue("ReportDir", m_reportDir);
-    m_settings->setValue("TerminateOnError", ui->checkBoxTerminateOnError->isChecked());
+    m_settings->setValue("TerminateOnError", m_terminateOnFirstError);
 
     //
     // Serial Parameters
@@ -271,7 +280,6 @@ void MainWindow::startTestsButtonPress()
     clearButtonPressed();
 
     CAbort::Instance()->clearRequest();
-    bool terminateOnError = ui->checkBoxTerminateOnError->isChecked();
 
     QString line;
     m_reportStrings.clear();
@@ -403,7 +411,7 @@ void MainWindow::startTestsButtonPress()
 
             //
             // Run the test
-            m_script.terminateOnError(terminateOnError);
+            m_script.terminateOnError(m_terminateOnFirstError);
             m_script.runTest(m_testNumbers[i]);
             if (m_script.sawError())
             {
@@ -422,7 +430,7 @@ void MainWindow::startTestsButtonPress()
 
             }
 
-            if  (terminateOnError && m_script.sawError())
+            if  (m_terminateOnFirstError && m_script.sawError())
             {
                 break;
             }
@@ -847,7 +855,14 @@ void MainWindow::logStringBlack(const char *string)
 
 void MainWindow::loadScriptButtonPress()
 {
-    QString filename = QFileDialog::getOpenFileName(this, tr("Open File"));
+    QString dirStr = QFileInfo(m_scriptFileName).canonicalPath();
+    QString fileStr = QFileInfo(m_scriptFileName).fileName();
+    QFileDialog fileDlg;
+    fileDlg.setDirectory(dirStr);
+    fileDlg.selectFile(fileStr);
+    //fileDlg.setWindowTitle("Open Script File");
+
+    QString filename = fileDlg.getOpenFileName(0, "Open Script File");
     if (filename.isEmpty())
     {
         return;
@@ -916,7 +931,6 @@ void MainWindow::clearAllTests()
 void MainWindow::abortButtonPress()
 {
     CAbort::Instance()->requestAbort();
-
 }
 
 
@@ -984,7 +998,7 @@ void MainWindow::enableButtonsAfterRun(bool enable)
 {
     ui->pushButtonStartTests->setEnabled(enable);
     ui->pushButton_LoadScript->setEnabled(enable);
-    ui->pushButton_ReloadScript->setEnabled(enable);
+    //ui->pushButton_ReloadScript->setEnabled(enable);
     ui->pushButton_Abort->setEnabled(!enable);
 }
 
@@ -1018,8 +1032,8 @@ bool MainWindow::connectToDatabase()
 
     QString connectionString = "DRIVER={SQL SERVER};SERVER=%1;DATABASE=%2;";
     connectionString = connectionString.arg(m_databaseServer).arg(m_databaseName);
-    m_db = QSqlDatabase::addDatabase("QODBC");
-    m_db.setDatabaseName(connectionString);
+    m_database = QSqlDatabase::addDatabase("QODBC");
+    m_database.setDatabaseName(connectionString);
 
     QString message;
     logStringGray("Connecting to Database:");
@@ -1030,9 +1044,9 @@ bool MainWindow::connectToDatabase()
     message.append(m_databaseName);
     logStringGray(message.toLocal8Bit());
 
-    if (!m_db.open(m_databaseUser, m_databasePwd))
+    if (!m_database.open(m_databaseUser, m_databasePwd))
     {
-        QSqlError err = m_db.lastError();
+        QSqlError err = m_database.lastError();
         message = "Failed to connect to database.\n";
         message.append(err.text());
         message.append("\n\nCannot validate serial number.");
@@ -1051,7 +1065,7 @@ bool MainWindow::serialNumberIsInDB(QString serialNumber)
     //
     // Connect to the database if this is the first time.
     //
-    if (!m_db.isOpen())
+    if (!m_database.isOpen())
         connectToDatabase();
 
     //
@@ -1064,7 +1078,7 @@ bool MainWindow::serialNumberIsInDB(QString serialNumber)
     queryStr.append("ON SNLogDetail.RecordNo = SNLog2.RecordNo ");
     queryStr.append("WHERE SNLogDetail.SN1='%1' AND SNLog2.[Z Number] ='%2'");
     queryStr = queryStr.arg(serialNumber).arg(m_databaseZNum);
-    QSqlQuery query(queryStr, m_db);
+    QSqlQuery query(queryStr, m_database);
 
     //
     // If there is a least one record then the serial number is in the database.

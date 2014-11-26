@@ -14,7 +14,7 @@
 
 #include "TestScript.h"
 
-#define VERSION_STRING "1.1.001"
+#define VERSION_STRING "1.1.002"
 
 namespace Ui
 {
@@ -88,8 +88,9 @@ private:
     QString     m_reportDir;
     QString     m_lastSerialNumber;
     bool        m_checkSerialConnections;
+    bool        m_terminateOnFirstError;
 
-    QSqlDatabase m_db;
+    QSqlDatabase m_database;
     bool    m_validateSerial;
     QString m_databaseServer;
     QString m_databaseName;
