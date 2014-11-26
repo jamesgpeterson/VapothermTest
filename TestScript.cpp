@@ -244,12 +244,13 @@ bool CTestScript::runTest(unsigned int n)
                 {
                     m_errorEncountered = true;
                     logStringRed("Value: \"NO\"");
-                    logStringRed("Result: FAILED (operator inspection)");
+                    logStringRed("Result: FAIL");
+                    logStringRed("FailDesc: failed operator inspection");
                 }
                 else
                 {
                     logStringBlack("Value: \"YES\"");
-                    logStringBlack("Result: PASSED (operator inspection)");
+                    logStringBlack("Result: PASS");
                 }
                 generateTestTrailer();
                 break;
@@ -264,7 +265,6 @@ bool CTestScript::runTest(unsigned int n)
                 QMessageBox::information(NULL, title, line, QMessageBox::Ok);
                 break;
             }
-
 
             case CCommand::CMD_SENDLINE_A:
             {
@@ -284,7 +284,7 @@ bool CTestScript::runTest(unsigned int n)
                 m_responseBuffer[0] = '\0';
                 if (!readVapoThermResponse(0, m_responseBuffer, sizeof(m_responseBuffer), m_timeoutA_ms))
                 {
-                    logStringGray("FAILED to read from instrument");
+                    logStringGray("Failed to read from device or fixture");
                     m_errorEncountered = true;
                 }
                 else
@@ -312,7 +312,7 @@ bool CTestScript::runTest(unsigned int n)
                 m_responseBuffer[0] = '\0';
                 if (!readVapoThermResponse(1, m_responseBuffer, sizeof(m_responseBuffer), m_timeoutB_ms))
                 {
-                    logStringGray("FAILED to read from instrument");
+                    logStringGray("Failed to read from device or fixture");
                     m_errorEncountered = true;
                 }
                 else
@@ -358,7 +358,9 @@ bool CTestScript::runTest(unsigned int n)
 
                 if (args.size() < pCommand->m_argNumber)
                 {
-                    logStringRed("Result: FAILED (expected field not found)");
+                    logStringBlack("Value: none");
+                    logStringRed("Result: FAIL");
+                    logStringRed("FailDesc: expected field not found");
                     m_errorEncountered = true;
                 }
                 else
@@ -367,22 +369,23 @@ bool CTestScript::runTest(unsigned int n)
                     double testNumber = args[pCommand->m_argNumber-1].toDouble(&ok);
                     if (!ok)
                     {
-                        logStringRed("Result: FAILED (unexpected data returned from instrument)");
+                        logStringBlack("Value: none");
+                        logStringRed("Result: FAIL");
+                        logStringRed("FailDesc: unexpected data returned from device or fixture");
                         m_errorEncountered = true;
                     }
                     else if ((testNumber < pCommand->m_argMin) || (testNumber > pCommand->m_argMax))
                     {
                         sprintf(msg, "Value: %0.3lf", testNumber);
                         logStringBlack(msg);
-                        sprintf(msg, "Result: FAILED (%0.3lf not in expected range [%0.3lf, %0.3lf])", testNumber, pCommand->m_argMin, pCommand->m_argMax);
-                        logStringRed(msg);
+                        logStringRed("Result: FAIL");
                         m_errorEncountered = true;
                     }
                     else
                     {
                         sprintf(msg, "Value: %0.3lf", testNumber);
-                        sprintf(msg, "Result: PASSED (%0.3lf in expected range [%0.3lf, %0.3lf])", testNumber, pCommand->m_argMin, pCommand->m_argMax);
                         logStringBlack(msg);
+                        logStringBlack("Result: PASS");
                     }
                 }
                 generateTestTrailer();
@@ -402,7 +405,9 @@ bool CTestScript::runTest(unsigned int n)
 
                 if (pCommand->m_argNumber > args.size())
                 {
-                    logStringRed("Result: FAILED (reading data from fixture or device)");
+                    logStringBlack("Value: none");
+                    logStringRed("Result: FAIL");
+                    logStringRed("FailDesc: failed reading data from device or fixture");
                     m_errorEncountered = true;
                 }
                 else
@@ -411,7 +416,9 @@ bool CTestScript::runTest(unsigned int n)
                     int argLength = arg->size();
                     if (pCommand->m_charNumber > argLength)
                     {
-                        logStringRed("Result: FAILED (argument length)");
+                        logStringBlack("Value: none");
+                        logStringRed("Result: FAIL");
+                        logStringRed("FailDesc: argument length is too short");
                         m_errorEncountered = true;
                     }
                     else if (arg->toLocal8Bit()[pCommand->m_charNumber-1] != pCommand->m_expectedChar)
@@ -420,9 +427,8 @@ bool CTestScript::runTest(unsigned int n)
 
                         char c = arg->toLocal8Bit().at(pCommand->m_charNumber-1);
                         sprintf(msg, "Value: \'%c\'", c);
-                        logStringBlack(msg);
-                        sprintf(msg, "Result: FAILED (field did not match - expected \'%c\', saw \'%c\')", pCommand->m_expectedChar, c);
                         logStringRed(msg);
+                        logStringRed("Result: FAIL");
                         m_errorEncountered = true;
                     }
                     else
@@ -430,7 +436,7 @@ bool CTestScript::runTest(unsigned int n)
                         char c = arg->toLocal8Bit().at(pCommand->m_charNumber-1);
                         sprintf(msg, "Value: \'%c\'", c);
                         logStringBlack(msg);
-                        logStringBlack("Result: PASSED");
+                        logStringBlack("Result: PASS");
                     }
                 }
                 generateTestTrailer();
@@ -449,7 +455,9 @@ bool CTestScript::runTest(unsigned int n)
                 logStringBlack(msg);
                 if (pCommand->m_argNumber > args.size())
                 {
-                    logStringRed("Result: FAILED (reading data from instrument)");
+                    logStringBlack("Value: none");
+                    logStringRed("Result: FAIL");
+                    logStringRed("FailDesc: failed to read data from device or fixture");
                     m_errorEncountered = true;
                 }
                 else
@@ -459,12 +467,13 @@ bool CTestScript::runTest(unsigned int n)
                     QString *arg = &args[pCommand->m_argNumber-1];
                     if (arg != pCommand->m_stringArg)
                     {
-                        logStringRed("Result: FAILED (expected string not found)");
+                        logStringRed("Result: FAIL");
+                        logStringRed("FailDesc: expected string not found");
                         m_errorEncountered = true;
                     }
                     else
                     {
-                        logStringBlack("Result: PASSED");
+                        logStringBlack("Result: PASS");
                     }
                 }
                 generateTestTrailer();
@@ -478,11 +487,6 @@ bool CTestScript::runTest(unsigned int n)
             m_errorEncountered = true;
             int timeout = pCommand->params_WAITFOR.m_timeoutMS;
             int channel = pCommand->params_WAITFOR.m_channelIndex;
-            if ((timeout < 0) || (channel < 0))
-            {
-                logStringRed("Test FAILED (WAITFOR) - invalid parameters");
-                break;
-            }
             QTime t;
             t.start();
             while (t.elapsed() < timeout)
@@ -502,12 +506,13 @@ bool CTestScript::runTest(unsigned int n)
             }
             if (m_errorEncountered)
             {
-                logStringRed("Test FAILED (WAITFOR) - timeout");
+                logStringGray("WAITFOR: command timed out");
             }
             else
             {
-                QString str = "found string: ";
+                QString str = "WAITFOR: found expected string (";
                 str.append(pCommand->params_WAITFOR.m_expectedString);
+                str.append(")");
                 logStringGray(str.toLocal8Bit());
             }
             break;

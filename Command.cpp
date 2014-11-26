@@ -278,16 +278,8 @@ void CCommand::parse(const char *line, int lineNumber)
     {
         m_type = CMD_WAITFOR;
         params_WAITFOR.m_channelIndex = -1;
-        params_WAITFOR.m_timeoutMS = 0;
+        params_WAITFOR.m_timeoutMS = -1;
         params_WAITFOR.m_expectedString = NULL;
-        if (args.size() != 4)
-        {
-            char msg[500];
-            sprintf(msg, "malformed command on line %d: %s", lineNumber,  line+1);
-            QMessageBox msgBox;
-            msgBox.setText(msg);
-            msgBox.exec();
-        }
         if (args.size() >= 2)
         {
             if ((args[1] == "a") || (args[1] == "A") || (args[1] == "0"))
@@ -306,6 +298,15 @@ void CCommand::parse(const char *line, int lineNumber)
         if (args.size() >= 4)
         {
             params_WAITFOR.m_expectedString =  new QString(args[3]);
+        }
+        if ((params_WAITFOR.m_timeoutMS <= 0) || (params_WAITFOR.m_channelIndex < 0) || (params_WAITFOR.m_expectedString==NULL) )
+        {
+            char msg[500];
+            sprintf(msg, "malformed command on line %d: %s", lineNumber,  line+1);
+            QMessageBox msgBox;
+            msgBox.setText(msg);
+            msgBox.exec();
+            m_type = CMD_UNKNOWN;
         }
         return;
     }
