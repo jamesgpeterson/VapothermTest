@@ -14,7 +14,7 @@
 
 #include "TestScript.h"
 
-#define VERSION_STRING "1.1.002"
+#define VERSION_STRING "1.1.003"
 
 namespace Ui
 {
@@ -29,6 +29,9 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
+
+signals:
+    void setProgressBarValue(int n);
 
 public slots:
     void startTestsButtonPress();

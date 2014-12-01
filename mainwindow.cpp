@@ -50,6 +50,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(&m_script, SIGNAL(sendVapoThermCommand(int, const char *)), this, SLOT(sendVapoThermCommand(int, const char *)));
     connect(&m_script, SIGNAL(readVapoThermResponse(int, char *, const int , const int )), this, SLOT(readVapoThermResponse(int, char *, const int , const int )));
     connect(&m_script, SIGNAL(flushIncomingData(int)), this, SLOT(flushIncomingData(int)));
+    //connect(this ,SIGNAL(setProgressBarValue(int n)), ui->progressBarTests, SLOT(setValue(int)));
 
     ui->pushButtonStartTests->setEnabled(false);
     ui->pushButton_Abort->setEnabled(false);
@@ -100,7 +101,7 @@ MainWindow::MainWindow(QWidget *parent) :
     // Terminate on Error
     //
     m_terminateOnFirstError = m_settings->value("TerminateOnError", "false").toBool();
-    //ui->checkBoxTerminateOnError->setChecked(m_settings->value("TerminateOnError", "false").toBool());
+    ui->checkBoxTerminateOnError->setChecked(m_terminateOnFirstError);
 
     //
     // Serial parameters
@@ -278,6 +279,9 @@ void MainWindow::startTestsButtonPress()
 {
     enableButtonsAfterRun(false);
     clearButtonPressed();
+    //ui->progressBarTests->setValue(0);
+    emit setProgressBarValue(0);
+
 
     CAbort::Instance()->clearRequest();
 
@@ -393,8 +397,12 @@ void MainWindow::startTestsButtonPress()
     bool scriptPassed = true;
     ui->labelResults->setText(g_stringWorking);
     unsigned int testCount = m_testList.size();
+    ui->progressBarTests->setRange(0, 2*testCount);
+
     for (unsigned int i=0; i<testCount; i++)
     {
+        emit setProgressBarValue(2*i+1);
+
         ui->listWidget->setCurrentRow(i);
 
         if ((CAbort::Instance()->abortRequested()) || (m_script.terminatedEarly()))
@@ -419,7 +427,7 @@ void MainWindow::startTestsButtonPress()
 
                 if (CAbort::Instance()->abortRequested())
                 {
-                    logStringRed("Result: FAILED (Aborted by Operator)");
+                    logStringRedToWindow("Tests ABORTED by Operator)");
                     ui->labelResults->setText(g_stringAborted);
                     scriptPassed = false;
                 }
@@ -435,7 +443,11 @@ void MainWindow::startTestsButtonPress()
                 break;
             }
         }
+
+        emit setProgressBarValue(2*i+2);
+
     }
+
     if (scriptPassed)
         ui->labelResults->setText(g_stringPassed);
     else
@@ -907,6 +919,7 @@ void MainWindow::reloadScriptButtonPress()
         item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
         item->setCheckState(Qt::Checked);
      }
+    ui->progressBarTests->setValue(0);
 
     setTitle();
 }
@@ -997,7 +1010,7 @@ void MainWindow::clearButtonPressed()
 void MainWindow::enableButtonsAfterRun(bool enable)
 {
     ui->pushButtonStartTests->setEnabled(enable);
-    ui->pushButton_LoadScript->setEnabled(enable);
+    //ui->pushButton_LoadScript->setEnabled(enable);
     //ui->pushButton_ReloadScript->setEnabled(enable);
     ui->pushButton_Abort->setEnabled(!enable);
 }
