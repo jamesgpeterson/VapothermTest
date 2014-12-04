@@ -41,7 +41,6 @@ public slots:
     void commPortSelected_B(QString deviceName);
     void serialNumberChanged(QString serialNumber);
     void abortButtonPress();
-    void clearButtonPressed();
     void enableButtonsAfterRun(bool enable);
     void selectAllTests();
     void clearAllTests();

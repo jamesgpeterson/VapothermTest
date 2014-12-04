@@ -25,6 +25,7 @@ QString g_stringPassed        = "<html><head/><body><p><span style=\" font-size:
 QString g_stringFailed        = "<html><head/><body><p><span style=\" font-size:26pt; font-weight:600; color:#F00000;\">Failed</span></p></body></html>";
 QString g_stringNotRun        = "<html><head/><body><p><span style=\" font-size:26pt; font-weight:600; color:#F00000;\">Not Run</span></p></body></html>";
 QString g_stringAborted       = "<html><head/><body><p><span style=\" font-size:20pt; font-weight:600; color:#F00000;\">Aborted</span></p></body></html>";
+QString g_stringAbnormalStop  = "<html><head/><body><p><span style=\" font-size:20pt; font-weight:600; color:#F00000;\">Abnormal Stop</span></p></body></html>";
 char    g_stringSaveReport[]  = "<html><head/><body><p><span style=\" font-size:20pt; font-weight:600; color:#000000;\">Save test report?</span></p></body></html>";
 
 #define NOT_CONNECTED "not connected"
@@ -50,7 +51,6 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(&m_script, SIGNAL(sendVapoThermCommand(int, const char *)), this, SLOT(sendVapoThermCommand(int, const char *)));
     connect(&m_script, SIGNAL(readVapoThermResponse(int, char *, const int , const int )), this, SLOT(readVapoThermResponse(int, char *, const int , const int )));
     connect(&m_script, SIGNAL(flushIncomingData(int)), this, SLOT(flushIncomingData(int)));
-    //connect(this ,SIGNAL(setProgressBarValue(int n)), ui->progressBarTests, SLOT(setValue(int)));
 
     ui->pushButtonStartTests->setEnabled(false);
     ui->pushButton_Abort->setEnabled(false);
@@ -101,7 +101,7 @@ MainWindow::MainWindow(QWidget *parent) :
     // Terminate on Error
     //
     m_terminateOnFirstError = m_settings->value("TerminateOnError", "false").toBool();
-    ui->checkBoxTerminateOnError->setChecked(m_terminateOnFirstError);
+    ui->actionTerminate_on_first_error->setChecked(m_terminateOnFirstError);
 
     //
     // Serial parameters
@@ -120,11 +120,11 @@ MainWindow::MainWindow(QWidget *parent) :
     // Database parameters
     //
     m_validateSerial = m_settings->value("Database/ValidateSerialNumber", "false").toBool();
-    m_databaseServer = m_settings->value("Database/databaseServer", "").toString(); // "ENFS3"
-    m_databaseName   = m_settings->value("Database/databaseName", "").toString();   // "EnerconUtilities"
-    m_databaseUser   = m_settings->value("Database/databaseUser", "").toString();   // "eu_ro"
-    m_databasePwd    = m_settings->value("Database/databasePwd", "").toString();    // "ET657&me"
-    m_databaseZNum   = m_settings->value("Database/databaseZNum", "").toString();   // "Z4001-01"
+    m_databaseServer = m_settings->value("Database/databaseServer", "ENFS3").toString(); // "ENFS3"
+    m_databaseName   = m_settings->value("Database/databaseName", "EnerconUtilities").toString();   // "EnerconUtilities"
+    m_databaseUser   = m_settings->value("Database/databaseUser", "eu_ro").toString();   // "eu_ro"
+    m_databasePwd    = m_settings->value("Database/databasePwd", "ET657&me").toString();    // "ET657&me"
+    m_databaseZNum   = m_settings->value("Database/databaseZNum", "Z4001-01").toString();   // "Z4001-01"
 
 
     //
@@ -278,7 +278,9 @@ bool MainWindow::displayQuestion(const char *msg)
 void MainWindow::startTestsButtonPress()
 {
     enableButtonsAfterRun(false);
-    clearButtonPressed();
+    ui->labelResults->setText(g_stringIdle);
+    ui->textEditResults->clear();
+
     //ui->progressBarTests->setValue(0);
     emit setProgressBarValue(0);
 
@@ -299,7 +301,6 @@ void MainWindow::startTestsButtonPress()
         enableButtonsAfterRun(true);
         return;
     }
-
 
     //
     // TestProgram
@@ -394,81 +395,131 @@ void MainWindow::startTestsButtonPress()
     //
     std::vector<int> failedTestList;
 
-    bool scriptPassed = true;
+    //bool scriptPassed = true;
     ui->labelResults->setText(g_stringWorking);
     unsigned int testCount = m_testList.size();
+    int adjustedTestCount = testCount;
+    if (m_indexOnAbort >= 0)
+        adjustedTestCount--;
+    if (m_indexOnExit >= 0)
+        adjustedTestCount--;
     ui->progressBarTests->setRange(0, 2*testCount);
+    int failCount = 0;
+    int passCount = 0;
+    int skipCount = 0;
 
     for (unsigned int i=0; i<testCount; i++)
     {
+        //
+        // Update the progress bar
+        //
         emit setProgressBarValue(2*i+1);
 
+        //
+        // Highlight the current test
+        //
         ui->listWidget->setCurrentRow(i);
 
-        if ((CAbort::Instance()->abortRequested()) || (m_script.terminatedEarly()))
+        //
+        // Skip tests that are not checked
+        //
+        QListWidgetItem *item = m_testList[i];
+        if (item->checkState() != Qt::Checked)
         {
-            ui->labelResults->setText(g_stringAborted);
-            scriptPassed = false;
-            enableButtonsAfterRun(true);
-            break;
+            skipCount++;
+            emit setProgressBarValue(2*i+2);
+            continue;
         }
 
-        QListWidgetItem *item = m_testList[i];
-        if (item->checkState() == Qt::Checked)
+        //
+        // Run the test and update the progress bar
+        //
+        m_script.terminateOnError(m_terminateOnFirstError);
+        m_script.runTest(m_testNumbers[i]);
+        emit setProgressBarValue(2*i+2);
+
+        //
+        // Check for errors
+        //
+        if (CAbort::Instance()->abortRequested())
         {
+            failCount++;
+            failedTestList.push_back(m_testNumbers[i]);
+            logStringRedToWindow("Tests ABORTED by Operator");
 
-            //
-            // Run the test
-            m_script.terminateOnError(m_terminateOnFirstError);
-            m_script.runTest(m_testNumbers[i]);
-            if (m_script.sawError())
+            if (m_indexOnAbort >= 0)
             {
-                failedTestList.push_back(m_testNumbers[i]);
-
-                if (CAbort::Instance()->abortRequested())
-                {
-                    logStringRedToWindow("Tests ABORTED by Operator)");
-                    ui->labelResults->setText(g_stringAborted);
-                    scriptPassed = false;
-                }
-                else
-                {
-                    scriptPassed = false;
-                }
-
+                CAbort::Instance()->clearRequest();
+                m_script.runTest(m_indexOnAbort);
+                CAbort::Instance()->requestAbort();
             }
 
-            if  (m_terminateOnFirstError && m_script.sawError())
+            break;
+        }
+        else if (m_script.terminatedEarly())
+        {
+            failCount++;
+            failedTestList.push_back(m_testNumbers[i]);
+            logStringRedToWindow("Tests Terminated Abnormally");
+            if (m_indexOnAbort >= 0)
+            {
+                CAbort::Instance()->clearRequest();
+                m_script.runTest(m_indexOnAbort);
+                CAbort::Instance()->requestAbort();
+            }
+            break;
+        }
+        else if (m_script.sawError())
+        {
+            failCount++;
+            failedTestList.push_back(m_testNumbers[i]);
+
+            if  (m_terminateOnFirstError)
             {
                 break;
             }
         }
-
-        emit setProgressBarValue(2*i+2);
-
+        else
+        {
+            passCount++;
+        }
     }
 
-    if (scriptPassed)
-        ui->labelResults->setText(g_stringPassed);
-    else
+    //
+    // Update the results control
+    //
+    if (CAbort::Instance()->abortRequested())
+        ui->labelResults->setText(g_stringAborted);
+    else if (m_script.terminatedEarly())
+        ui->labelResults->setText(g_stringAbnormalStop);
+    else if (failCount > 0)
         ui->labelResults->setText(g_stringFailed);
+    else
+        ui->labelResults->setText(g_stringPassed);
 
-
-    if ((CAbort::Instance()->abortRequested()) && (m_indexOnAbort >= 0))
+    //
+    // Run the OnExit commands if specified
+    //
+    if (m_indexOnExit >= 0)
     {
         CAbort::Instance()->clearRequest();
-        m_script.runTest(m_indexOnAbort);
-        CAbort::Instance()->requestAbort();
+        m_script.runTest(m_indexOnExit);
     }
 
-    if ((!CAbort::Instance()->abortRequested()) && (m_indexOnExit >= 0))
+    //
+    // Write the report file
+    //
+    if (!CAbort::Instance()->abortRequested())
     {
-        m_script.runTest(m_indexOnExit);
+        generateReport();
     }
 
     //
     // List the tests that failed
     //
+    QString summaryStr = "Summary: PASSED=%1  FAILED=%2  NOT_RUN=%3";
+    summaryStr = summaryStr.arg(passCount).arg(failCount).arg(skipCount);
+    logStringGray(summaryStr.toLocal8Bit());
     if (failedTestList.size() > 0)
     {
         logStringRedToWindow(" ");
@@ -484,22 +535,10 @@ void MainWindow::startTestsButtonPress()
     }
 
     //
-    // Write the report file
-    //
-    //if (displayQuestion("Do you want to generate report?"))
-    if (displayQuestion(g_stringSaveReport))
-    {
-        generateReport();
-    }
-
-    //
-    // re-enable the run button
+    // re-enable the run button and reset the serial number control
     //
     enableButtonsAfterRun(true);
-
-    //
-    // Set the focus in the serial number edit box
-    //
+    ui->lineEditSerialNumber->clear();
     ui->lineEditSerialNumber->setFocus();
 }
 
@@ -872,7 +911,6 @@ void MainWindow::loadScriptButtonPress()
     QFileDialog fileDlg;
     fileDlg.setDirectory(dirStr);
     fileDlg.selectFile(fileStr);
-    //fileDlg.setWindowTitle("Open Script File");
 
     QString filename = fileDlg.getOpenFileName(0, "Open Script File");
     if (filename.isEmpty())
@@ -923,6 +961,7 @@ void MainWindow::reloadScriptButtonPress()
 
     setTitle();
 }
+
 
 void MainWindow::selectAllTests()
 {
@@ -999,12 +1038,6 @@ bool MainWindow::generateReport()
 }
 
 
-void MainWindow::clearButtonPressed()
-{
-    ui->labelResults->setText(g_stringIdle);
-    ui->textEditResults->clear();
-}
-
 
 
 void MainWindow::enableButtonsAfterRun(bool enable)
@@ -1021,6 +1054,10 @@ void MainWindow::serialNumberChanged(QString serialNumber)
     const int serialNumberLength = 10;
 
     int length = serialNumber.length();
+    if (length <= 0)
+    {
+        return;
+    }
     if (!serialNumber[length-1].isNumber())
     {
         serialNumber = serialNumber.left(--length);
@@ -1102,6 +1139,6 @@ bool MainWindow::serialNumberIsInDB(QString serialNumber)
 
 void MainWindow::terminateCheckboxClicked()
 {
-    m_terminateOnFirstError = ui->checkBoxTerminateOnError->isChecked();
+    m_terminateOnFirstError = ui->actionTerminate_on_first_error->isChecked();
 }
 
