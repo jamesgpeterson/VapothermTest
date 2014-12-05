@@ -365,7 +365,7 @@ Only checks will be run.</string>
    <hints>
     <hint type="sourcelabel">
      <x>140</x>
-     <y>201</y>
+     <y>191</y>
     </hint>
     <hint type="destinationlabel">
      <x>302</x>
@@ -413,7 +413,7 @@ Only checks will be run.</string>
    <hints>
     <hint type="sourcelabel">
      <x>290</x>
-     <y>201</y>
+     <y>191</y>
     </hint>
     <hint type="destinationlabel">
      <x>618</x>
@@ -465,7 +465,7 @@ Only checks will be run.</string>
     </hint>
     <hint type="destinationlabel">
      <x>63</x>
-     <y>273</y>
+     <y>270</y>
     </hint>
    </hints>
   </connection>
@@ -503,9 +503,41 @@ Only checks will be run.</string>
   </connection>
   <connection>
    <sender>actionTerminate_on_first_error</sender>
-   <signal>triggered()</signal>
+   <signal>toggled(bool)</signal>
    <receiver>MainWindow</receiver>
-   <slot>terminateCheckboxClicked()</slot>
+   <slot>terminateCheckboxClicked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>426</x>
+     <y>290</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionValidate_serial_connections</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>validateSerialConnectionChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>426</x>
+     <y>290</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionValidate_serial_number</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>validateSerialNumberChecked(bool)</slot>
    <hints>
     <hint type="sourcelabel">
      <x>-1</x>
@@ -533,6 +565,8 @@ Only checks will be run.</string>
   <slot>selectAllTests()</slot>
   <slot>clearAllTests()</slot>
   <slot>serialNumberChanged(QString)</slot>
-  <slot>terminateCheckboxClicked()</slot>
+  <slot>terminateCheckboxClicked(bool)</slot>
+  <slot>validateSerialConnectionChecked(bool)</slot>
+  <slot>validateSerialNumberChecked(bool)</slot>
  </slots>
 </ui>

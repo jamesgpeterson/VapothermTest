@@ -107,6 +107,7 @@ MainWindow::MainWindow(QWidget *parent) :
     // Serial parameters
     //
     m_checkSerialConnections = m_settings->value("Serial/CheckConnections", "true").toBool();
+    ui->actionValidate_serial_number->setChecked(m_checkSerialConnections);
     m_outputDelay_ms = m_settings->value("Serial/OutputDelayMS", 120).toInt();
     m_timeoutA_ms = m_settings->value("Serial/TimeoutMS_A", 100).toInt();
     m_timeoutB_ms = m_settings->value("Serial/TimeoutMS_B", 100).toInt();
@@ -120,11 +121,12 @@ MainWindow::MainWindow(QWidget *parent) :
     // Database parameters
     //
     m_validateSerial = m_settings->value("Database/ValidateSerialNumber", "false").toBool();
-    m_databaseServer = m_settings->value("Database/databaseServer", "ENFS3").toString(); // "ENFS3"
-    m_databaseName   = m_settings->value("Database/databaseName", "EnerconUtilities").toString();   // "EnerconUtilities"
-    m_databaseUser   = m_settings->value("Database/databaseUser", "eu_ro").toString();   // "eu_ro"
-    m_databasePwd    = m_settings->value("Database/databasePwd", "ET657&me").toString();    // "ET657&me"
-    m_databaseZNum   = m_settings->value("Database/databaseZNum", "Z4001-01").toString();   // "Z4001-01"
+    ui->actionValidate_serial_connections->setChecked(m_validateSerial);
+    m_databaseServer = m_settings->value("Database/databaseServer", "").toString(); // "ENFS3"
+    m_databaseName   = m_settings->value("Database/databaseName", "").toString();   // "EnerconUtilities"
+    m_databaseUser   = m_settings->value("Database/databaseUser", "").toString();   // "eu_ro"
+    m_databasePwd    = m_settings->value("Database/databasePwd", "").toString();    // "ET657&me"
+    m_databaseZNum   = m_settings->value("Database/databaseZNum", "").toString();   // "Z4001-01"
 
 
     //
@@ -281,9 +283,13 @@ void MainWindow::startTestsButtonPress()
     ui->labelResults->setText(g_stringIdle);
     ui->textEditResults->clear();
 
-    //ui->progressBarTests->setValue(0);
     emit setProgressBarValue(0);
 
+    for (unsigned int i=0; i<m_testList.size(); i++)
+    {
+        QListWidgetItem *item = m_testList[i];
+        item->setForeground(Qt::black);
+    }
 
     CAbort::Instance()->clearRequest();
 
@@ -398,15 +404,12 @@ void MainWindow::startTestsButtonPress()
     //bool scriptPassed = true;
     ui->labelResults->setText(g_stringWorking);
     unsigned int testCount = m_testList.size();
-    int adjustedTestCount = testCount;
-    if (m_indexOnAbort >= 0)
-        adjustedTestCount--;
-    if (m_indexOnExit >= 0)
-        adjustedTestCount--;
     ui->progressBarTests->setRange(0, 2*testCount);
     int failCount = 0;
     int passCount = 0;
     int skipCount = 0;
+
+
 
     for (unsigned int i=0; i<testCount; i++)
     {
@@ -453,7 +456,7 @@ void MainWindow::startTestsButtonPress()
                 m_script.runTest(m_indexOnAbort);
                 CAbort::Instance()->requestAbort();
             }
-
+            item->setForeground(Qt::red);
             break;
         }
         else if (m_script.terminatedEarly())
@@ -467,12 +470,14 @@ void MainWindow::startTestsButtonPress()
                 m_script.runTest(m_indexOnAbort);
                 CAbort::Instance()->requestAbort();
             }
+            item->setForeground(Qt::red);
             break;
         }
         else if (m_script.sawError())
         {
             failCount++;
-            failedTestList.push_back(m_testNumbers[i]);
+            //failedTestList.push_back(m_testNumbers[i]);
+            item->setForeground(Qt::red);
 
             if  (m_terminateOnFirstError)
             {
@@ -482,6 +487,8 @@ void MainWindow::startTestsButtonPress()
         else
         {
             passCount++;
+            //item->setForeground(Qt::green);
+            item->setForeground(QColor(10, 140, 10));
         }
     }
 
@@ -1043,8 +1050,6 @@ bool MainWindow::generateReport()
 void MainWindow::enableButtonsAfterRun(bool enable)
 {
     ui->pushButtonStartTests->setEnabled(enable);
-    //ui->pushButton_LoadScript->setEnabled(enable);
-    //ui->pushButton_ReloadScript->setEnabled(enable);
     ui->pushButton_Abort->setEnabled(!enable);
 }
 
@@ -1137,8 +1142,19 @@ bool MainWindow::serialNumberIsInDB(QString serialNumber)
 }
 
 
-void MainWindow::terminateCheckboxClicked()
+void MainWindow::terminateCheckboxClicked(bool checked)
 {
-    m_terminateOnFirstError = ui->actionTerminate_on_first_error->isChecked();
+    m_terminateOnFirstError = checked; //ui->actionTerminate_on_first_error->isChecked();
 }
+
+void MainWindow::validateSerialNumberChecked(bool checked)
+{
+    m_checkSerialConnections = checked; //ui->actionValidate_serial_number->isChecked();
+}
+
+void MainWindow::validateSerialConnectionsChecked(bool checked)
+{
+    m_validateSerial = checked; //ui->actionValidate_serial_connections->isChecked();
+}
+
 

@@ -14,7 +14,7 @@
 
 #include "TestScript.h"
 
-#define VERSION_STRING "1.1.003"
+#define VERSION_STRING "1.1.4"
 
 namespace Ui
 {
@@ -44,7 +44,9 @@ public slots:
     void enableButtonsAfterRun(bool enable);
     void selectAllTests();
     void clearAllTests();
-    void terminateCheckboxClicked();
+    void terminateCheckboxClicked(bool checked);
+    void validateSerialNumberChecked(bool checked);
+    void validateSerialConnectionsChecked(bool checked);
 
 
     void logStringBlack(const char *string);
