@@ -107,7 +107,7 @@ MainWindow::MainWindow(QWidget *parent) :
     // Serial parameters
     //
     m_checkSerialConnections = m_settings->value("Serial/CheckConnections", "true").toBool();
-    ui->actionValidate_serial_number->setChecked(m_checkSerialConnections);
+    ui->actionValidate_serial_connections->setChecked(m_checkSerialConnections);
     m_outputDelay_ms = m_settings->value("Serial/OutputDelayMS", 120).toInt();
     m_timeoutA_ms = m_settings->value("Serial/TimeoutMS_A", 100).toInt();
     m_timeoutB_ms = m_settings->value("Serial/TimeoutMS_B", 100).toInt();
@@ -121,7 +121,7 @@ MainWindow::MainWindow(QWidget *parent) :
     // Database parameters
     //
     m_validateSerial = m_settings->value("Database/ValidateSerialNumber", "false").toBool();
-    ui->actionValidate_serial_connections->setChecked(m_validateSerial);
+    ui->actionValidate_serial_number->setChecked(m_validateSerial);
     m_databaseServer = m_settings->value("Database/databaseServer", "").toString(); // "ENFS3"
     m_databaseName   = m_settings->value("Database/databaseName", "").toString();   // "EnerconUtilities"
     m_databaseUser   = m_settings->value("Database/databaseUser", "").toString();   // "eu_ro"
@@ -174,7 +174,7 @@ MainWindow::~MainWindow()
     }
     if (m_serialPorts[1]->isOpen())
     {
-        m_settings->setValue("SerialPortB", m_serialPorts[1]->portName());
+        m_settings->setValue("Serial/PortB", m_serialPorts[1]->portName());
         m_serialPorts[1]->clear();
         m_serialPorts[1]->close();
     }
@@ -379,8 +379,8 @@ void MainWindow::startTestsButtonPress()
     }
     if ( m_validateSerial &&  !serialNumberIsInDB(serialNumber) )
     {
-        logStringRed("Serial number is not in the database.");
-        displayWarning("Serial number is not in the database.");
+        logStringRed("Serial number is not validated in the database.");
+        displayWarning("Serial number is not validated in the database.");
         ui->labelResults->setText(g_stringNotRun);
         enableButtonsAfterRun(true);
         ui->lineEditSerialNumber->setFocus();
@@ -407,8 +407,6 @@ void MainWindow::startTestsButtonPress()
     ui->progressBarTests->setRange(0, 2*testCount);
     int failCount = 0;
     int passCount = 0;
-    int skipCount = 0;
-
 
 
     for (unsigned int i=0; i<testCount; i++)
@@ -429,7 +427,6 @@ void MainWindow::startTestsButtonPress()
         QListWidgetItem *item = m_testList[i];
         if (item->checkState() != Qt::Checked)
         {
-            skipCount++;
             emit setProgressBarValue(2*i+2);
             continue;
         }
@@ -476,7 +473,7 @@ void MainWindow::startTestsButtonPress()
         else if (m_script.sawError())
         {
             failCount++;
-            //failedTestList.push_back(m_testNumbers[i]);
+            failedTestList.push_back(m_testNumbers[i]);
             item->setForeground(Qt::red);
 
             if  (m_terminateOnFirstError)
@@ -488,7 +485,8 @@ void MainWindow::startTestsButtonPress()
         {
             passCount++;
             //item->setForeground(Qt::green);
-            item->setForeground(QColor(10, 140, 10));
+            //item->setForeground(QColor(10, 140, 10));
+            item->setForeground(Qt::gray);
         }
     }
 
@@ -525,7 +523,7 @@ void MainWindow::startTestsButtonPress()
     // List the tests that failed
     //
     QString summaryStr = "Summary: PASSED=%1  FAILED=%2  NOT_RUN=%3";
-    summaryStr = summaryStr.arg(passCount).arg(failCount).arg(skipCount);
+    summaryStr = summaryStr.arg(passCount).arg(failCount).arg(testCount-passCount-failCount);
     logStringGray(summaryStr.toLocal8Bit());
     if (failedTestList.size() > 0)
     {
@@ -1144,17 +1142,17 @@ bool MainWindow::serialNumberIsInDB(QString serialNumber)
 
 void MainWindow::terminateCheckboxClicked(bool checked)
 {
-    m_terminateOnFirstError = checked; //ui->actionTerminate_on_first_error->isChecked();
+    m_terminateOnFirstError = checked;
 }
 
 void MainWindow::validateSerialNumberChecked(bool checked)
 {
-    m_checkSerialConnections = checked; //ui->actionValidate_serial_number->isChecked();
+    m_validateSerial = checked;
 }
 
 void MainWindow::validateSerialConnectionsChecked(bool checked)
 {
-    m_validateSerial = checked; //ui->actionValidate_serial_connections->isChecked();
+    m_checkSerialConnections = checked;
 }
 
 
