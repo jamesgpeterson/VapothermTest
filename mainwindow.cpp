@@ -463,9 +463,7 @@ void MainWindow::startTestsButtonPress()
             logStringRedToWindow("Tests Terminated Abnormally");
             if (m_indexOnAbort >= 0)
             {
-                CAbort::Instance()->clearRequest();
                 m_script.runTest(m_indexOnAbort);
-                CAbort::Instance()->requestAbort();
             }
             item->setForeground(Qt::red);
             break;
