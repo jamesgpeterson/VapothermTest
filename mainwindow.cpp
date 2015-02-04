@@ -505,8 +505,19 @@ void MainWindow::startTestsButtonPress()
     //
     if (m_indexOnExit >= 0)
     {
+#if 0
         CAbort::Instance()->clearRequest();
         m_script.runTest(m_indexOnExit);
+#else
+        bool aborted = CAbort::Instance()->abortRequested();
+        CAbort::Instance()->clearRequest();
+        m_script.runTest(m_indexOnExit);
+        if (aborted)
+        {
+            CAbort::Instance()->requestAbort();
+        }
+#endif
+        //CAbort::Instance()->requestAbort();
     }
 
     //
