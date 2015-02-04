@@ -14,7 +14,7 @@
 
 #include "TestScript.h"
 
-#define VERSION_STRING "1.8"
+#define VERSION_STRING "2.1"
 
 namespace Ui
 {
