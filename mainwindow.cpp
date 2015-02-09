@@ -28,6 +28,9 @@ QString g_stringAborted       = "<html><head/><body><p><span style=\" font-size:
 QString g_stringAbnormalStop  = "<html><head/><body><p><span style=\" font-size:20pt; font-weight:600; color:#F00000;\">Abnormal Stop</span></p></body></html>";
 char    g_stringSaveReport[]  = "<html><head/><body><p><span style=\" font-size:20pt; font-weight:600; color:#000000;\">Save test report?</span></p></body></html>";
 
+QString g_noOperator = "<html><span style=\" font-size:12pt; font-weight:600; color:#F00000;\">Must enter the operator name.</span></html>";
+QString g_noSerialNumber = "<html><span style=\" font-size:12pt; font-weight:600; color:#F00000;\">Serial Number must be entered.</span></html>";
+
 #define NOT_CONNECTED "not connected"
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -133,6 +136,57 @@ MainWindow::MainWindow(QWidget *parent) :
     // Clear the results window.
     //
     ui->labelResults->setText(g_stringIdle);
+
+    //
+    // Unsaved Reports
+    //
+    int unsavedReportCount = m_settings->value("UnsavedReports/count", 0).toInt();
+    for (int i=0; i<unsavedReportCount; i++)
+    {
+        QString key = "UnsavedReports/report_";
+        QString numString;
+        numString.setNum(i);
+        key += numString;
+        QString reportName = m_settings->value(key, "").toString();
+        QFile *qf = new QFile(reportName);
+        if (qf->exists())
+        {
+            m_alternatReportFiles.push_back(reportName);
+        }
+        delete(qf);
+    }
+    if (m_alternatReportFiles.size() > 0)
+    {
+        QString msg = "The following reports could not be saved to the report directory (";
+        msg.append(m_reportDir);
+        msg.append(") in a previous run.  Move these files to the target directory or delete them if no longer needed.\n");
+        for (int i=0; i<unsavedReportCount; i++)
+        {
+            msg.append("\n    ");
+            msg.append(m_alternatReportFiles[i]);
+            if (i > 15)
+            {
+                msg.append("\nand more...");
+                break;
+            }
+        }
+        QString title = QFileInfo( QCoreApplication::applicationFilePath() ).fileName();
+        QMessageBox::warning(this, title, msg, QMessageBox::Ok);
+    }
+
+    //
+    // Test the report directory
+    //
+    QFile *qf = new QFile(m_reportDir);
+    if (!qf->exists())
+    {
+        QString msg = "<html><span style=\" font-size:12pt; font-weight:600; color:#F00000;\">Report directory can not be reached:<p>    ";
+        msg += m_reportDir;
+        msg += "</p></span></html>";
+        displayWarning(msg.toLocal8Bit().data());
+    }
+    delete(qf);
+
 }
 
 
@@ -193,6 +247,20 @@ MainWindow::~MainWindow()
     m_settings->setValue("Database/databasePwd",    m_databasePwd);
     m_settings->setValue("Database/databaseZNum",   m_databaseZNum);
 
+
+    //
+    // Unsaved reports
+    //
+    m_settings->setValue("UnsavedReports/count", m_alternatReportFiles.length());
+    for (int i=0; i<m_alternatReportFiles.length(); i++)
+    {
+        QString key = "UnsavedReports/report_";
+        QString numString;
+        numString.setNum(i);
+        key += numString;
+
+        m_settings->setValue(key, m_alternatReportFiles[i]);
+    }
 
     m_settings->sync();
     delete ui;
@@ -333,7 +401,7 @@ void MainWindow::startTestsButtonPress()
     if (testOperator.isEmpty())
     {
         logStringRed("Operator not entered.");
-        displayWarning("Must enter the operator name.");
+        displayWarning(g_noOperator.toLocal8Bit().data());
         ui->labelResults->setText(g_stringNotRun);
         enableButtonsAfterRun(true);
         ui->lineEditOperator->setFocus();
@@ -349,7 +417,7 @@ void MainWindow::startTestsButtonPress()
     if (serialNumber.isEmpty())
     {
         logStringRed("Serial number not entered.");
-        displayWarning("Serial Number must be entered before tests can be run.");
+        displayWarning(g_noSerialNumber.toLocal8Bit().data());
         ui->labelResults->setText(g_stringNotRun);
         enableButtonsAfterRun(true);
         ui->lineEditSerialNumber->setFocus();
@@ -505,10 +573,6 @@ void MainWindow::startTestsButtonPress()
     //
     if (m_indexOnExit >= 0)
     {
-#if 0
-        CAbort::Instance()->clearRequest();
-        m_script.runTest(m_indexOnExit);
-#else
         bool aborted = CAbort::Instance()->abortRequested();
         CAbort::Instance()->clearRequest();
         m_script.runTest(m_indexOnExit);
@@ -516,8 +580,6 @@ void MainWindow::startTestsButtonPress()
         {
             CAbort::Instance()->requestAbort();
         }
-#endif
-        //CAbort::Instance()->requestAbort();
     }
 
     //
@@ -1002,44 +1064,67 @@ void MainWindow::abortButtonPress()
 
 bool MainWindow::generateReport()
 {
-    //
-    //
-    //
-    QString normalizedDir = m_reportDir;
-    for (int i=normalizedDir.size()-1; i>=0; i--)
-    {
-        if (normalizedDir.at(i) == '/')
-        {
-            normalizedDir.data()[i] = '\\';
-        }
-    }
-
-
-    //
-    // create the filename
-    //
+    char filename[1000];
+    FILE *fp = NULL;
     time_t rawtime;
     struct tm *t;
     time (&rawtime);
     t = localtime (&rawtime);
-    char filename[100];
-    sprintf(filename, "%s%02d%02d%04d_%02d%02d%02d.txt",
-            normalizedDir.toLocal8Bit().data(),
-            t->tm_mon+1, t->tm_mday, t->tm_year+1900,
-            t->tm_hour, t->tm_min, t->tm_sec);
 
-    //
-    // open the file
-    //
-    FILE *fp = fopen(filename, "w");
-    if (fp == NULL)
+    while (fp == NULL)
     {
-        QMessageBox msgBox;
-        QString msg = "Could not write report file: ";
-        msg.append(filename);
-        msgBox.setText(msg);
-        msgBox.exec();
-        return(false);
+        //
+        // Select the directory to use
+        //
+        QString normalizedDir = (m_alternateReportDir.isEmpty()) ? m_reportDir : m_alternateReportDir;
+        if (normalizedDir.at(normalizedDir.size()-1) != '/')
+        {
+            normalizedDir.append("/");
+        }
+
+        //
+        // create the filename path name
+        //
+        sprintf(filename, "%s%02d%02d%04d_%02d%02d%02d.txt",
+                normalizedDir.toLocal8Bit().data(),
+                t->tm_mon+1, t->tm_mday, t->tm_year+1900,
+                t->tm_hour, t->tm_min, t->tm_sec);
+
+        //
+        // open the file
+        //
+        fp = fopen(filename, "w");
+
+        if (fp == NULL)
+        {
+            //QString g_stringNotConnected  = "<html><span style=\" font-size:8pt; font-weight:600; color:#F00000;\">NotConnected</span></html>";
+            QString title = QFileInfo( QCoreApplication::applicationFilePath() ).fileName();
+            QString msg = "<html><span style=\" font-size:12pt; font-weight:600; color:#F00000;\">";
+            msg += "Could not write report file: <p>";
+            msg.append(filename);
+            msg.append("</p><p>Save report to different directory?</p>");
+            msg.append("</span></html>");
+            if (QMessageBox::warning(this, title, msg, QMessageBox::Yes|QMessageBox::No) != QMessageBox::Yes)
+            {
+                return(false);
+            }
+
+            m_alternateReportDir = QFileDialog::getExistingDirectory(this,
+                                     tr("Select an Alternate Report Directory"), "/",
+                                     QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+
+            if (m_alternateReportDir.isEmpty())
+            {
+                return(false);
+            }
+        }
+
+
+    }
+
+    if (!m_alternateReportDir.isEmpty())
+    {
+        m_alternatReportFiles.push_back(filename);
     }
 
     for (unsigned int i=0; i<m_reportStrings.size(); i++)

@@ -599,11 +599,13 @@ void CTestScript::generateTestHeader(int lineNumber)
     logStringBlack(" ");
     QString TestNameLine = "TestName: ";
     TestNameLine.append(m_currentTest);
+#if 0
     TestNameLine.append("  [line=");
     QString numStr;
     numStr.setNum(lineNumber);
     TestNameLine.append(numStr);
     TestNameLine.append("]");
+#endif
     logStringBlack(TestNameLine.toLocal8Bit());
 
     //
@@ -621,20 +623,21 @@ void CTestScript::generateTestHeader(int lineNumber)
     //
     QString TestTypeLine = "TestType: ";
     TestTypeLine.append(m_currentTest);
-    TestTypeLine.append("  ");
     if (!m_currentDesc.isEmpty())
     {
-        TestTypeLine.append("[");
+        TestTypeLine.append(" [");
         TestTypeLine.append(m_currentDesc);
         TestTypeLine.append("]");
     }
     else
     {
-        TestTypeLine.append("[line=");
+#if 0
+        TestTypeLine.append(" [line=");
         QString numStr;
         numStr.setNum(lineNumber);
         TestTypeLine.append(numStr);
         TestTypeLine.append("]");
+#endif
     }
     logStringBlack(TestTypeLine.toLocal8Bit());
 

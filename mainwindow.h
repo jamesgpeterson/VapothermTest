@@ -14,7 +14,7 @@
 
 #include "TestScript.h"
 
-#define VERSION_STRING "2.1"
+#define VERSION_STRING "2.2"
 
 namespace Ui
 {
@@ -91,6 +91,7 @@ private:
 
     QString     m_scriptFileName;
     QString     m_reportDir;
+    QString     m_alternateReportDir;
     QString     m_lastSerialNumber;
     bool        m_checkSerialConnections;
     bool        m_terminateOnFirstError;
@@ -102,6 +103,9 @@ private:
     QString m_databaseUser;
     QString m_databasePwd;
     QString m_databaseZNum;
+
+    QStringList m_alternatReportFiles;
+
 };
 
 
