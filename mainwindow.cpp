@@ -16,6 +16,8 @@
 #include "ui_mainwindow.h"
 #include "Abort.h"
 
+#define LOCAL_REPORT_DIRECTORY "Reports"
+
 
 QString g_stringNotConnected  = "<html><head/><body><p><span style=\" font-size:8pt; font-weight:600; color:#F00000;\">NotConnected</span></p></body></html>";
 QString g_stringConnected     = "<html><head/><body><p><span style=\" font-size:8pt; font-weight:600; color:#00F000;\">  Connected</span></p></body></html>";
@@ -94,7 +96,7 @@ MainWindow::MainWindow(QWidget *parent) :
     //
     // report directory
     //
-    m_reportDir = m_settings->value("ReportDir", "").toString();
+    m_reportDir = m_settings->value("ReportDir", ".").toString();
     if (!m_reportDir.isEmpty() && (!m_reportDir.endsWith("/") && !m_reportDir.endsWith("\\")))
     {
         m_reportDir.append("/");
@@ -138,10 +140,36 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->labelResults->setText(g_stringIdle);
 
     //
+    // Test the report directory
+    //
+    QFile *qf = new QFile(m_reportDir);
+    if (!qf->exists())
+    {
+        QString msg = "<html><span style=\" font-size:12pt; font-weight:600; color:#F00000;\">Report directory can not be reached:<p>    ";
+        msg += m_reportDir;
+        msg += "<p>Reports will be written locally.</p></span></html>";
+        displayWarning(msg.toLocal8Bit().data());
+    }
+    delete(qf);
+
+    //
+    // Construct the local report directory
+    //
+    m_localReportDirectory = QFileInfo( QCoreApplication::applicationFilePath() ).dir().absolutePath();
+    m_localReportDirectory += "/";
+    m_localReportDirectory += LOCAL_REPORT_DIRECTORY;
+    m_localReportDirectory += "/";
+    QDir *dir = new QDir(m_localReportDirectory);
+    if (!dir->exists())
+    {
+        dir->mkdir(m_localReportDirectory);
+    }
+
+    //
     // Unsaved Reports
     //
     int unsavedReportCount = m_settings->value("UnsavedReports/count", 0).toInt();
-    for (int i=0; i<unsavedReportCount; i++)
+    for (int i=unsavedReportCount-1; i>=0; i--)
     {
         QString key = "UnsavedReports/report_";
         QString numString;
@@ -151,41 +179,19 @@ MainWindow::MainWindow(QWidget *parent) :
         QFile *qf = new QFile(reportName);
         if (qf->exists())
         {
-            m_alternatReportFiles.push_back(reportName);
+            QString newName = m_reportDir + QFileInfo(reportName).fileName();
+            if (qf->copy(newName))
+            {
+                qf->remove();
+                m_alternatReportFiles.removeAt(i);
+            }
+            else
+            {
+                m_alternatReportFiles.push_back(reportName);
+            }
         }
         delete(qf);
     }
-    if (m_alternatReportFiles.size() > 0)
-    {
-        QString msg = "The following reports could not be saved to the report directory (";
-        msg.append(m_reportDir);
-        msg.append(") in a previous run.  Move these files to the target directory or delete them if no longer needed.\n");
-        for (int i=0; i<unsavedReportCount; i++)
-        {
-            msg.append("\n    ");
-            msg.append(m_alternatReportFiles[i]);
-            if (i > 15)
-            {
-                msg.append("\nand more...");
-                break;
-            }
-        }
-        QString title = QFileInfo( QCoreApplication::applicationFilePath() ).fileName();
-        QMessageBox::warning(this, title, msg, QMessageBox::Ok);
-    }
-
-    //
-    // Test the report directory
-    //
-    QFile *qf = new QFile(m_reportDir);
-    if (!qf->exists())
-    {
-        QString msg = "<html><span style=\" font-size:12pt; font-weight:600; color:#F00000;\">Report directory can not be reached:<p>    ";
-        msg += m_reportDir;
-        msg += "</p></span></html>";
-        displayWarning(msg.toLocal8Bit().data());
-    }
-    delete(qf);
 
 }
 
@@ -263,6 +269,26 @@ MainWindow::~MainWindow()
     }
 
     m_settings->sync();
+
+    if (m_alternatReportFiles.size() > 0)
+    {
+        QString msg = "The following reports could not be saved to the report directory (";
+        msg.append(m_reportDir);
+        msg.append(").  The files are saved locally and will be copied on the next run when the report directory can be accessed.\n");
+        for (int i=0; i<m_alternatReportFiles.size(); i++)
+        {
+            msg.append("\n    ");
+            msg.append(m_alternatReportFiles[i]);
+            if (i > 15)
+            {
+                msg.append("\nand more...");
+                break;
+            }
+        }
+        QString title = QFileInfo( QCoreApplication::applicationFilePath() ).fileName();
+        QMessageBox::warning(this, title, msg, QMessageBox::Ok);
+    }
+
     delete ui;
 }
 
@@ -1064,76 +1090,81 @@ void MainWindow::abortButtonPress()
 
 bool MainWindow::generateReport()
 {
-    char filename[1000];
-    FILE *fp = NULL;
+    //
+    // create the filename path name
+    //
     time_t rawtime;
     struct tm *t;
     time (&rawtime);
     t = localtime (&rawtime);
+    char filename[1000];
+    sprintf(filename, "%02d%02d%04d_%02d%02d%02d.txt",
+            t->tm_mon+1, t->tm_mday, t->tm_year+1900,
+            t->tm_hour, t->tm_min, t->tm_sec);
 
-    while (fp == NULL)
+    QString filePath = m_reportDir;
+    if (filePath.at(filePath.size()-1) != '/')
     {
-        //
-        // Select the directory to use
-        //
-        QString normalizedDir = (m_alternateReportDir.isEmpty()) ? m_reportDir : m_alternateReportDir;
-        if (normalizedDir.at(normalizedDir.size()-1) != '/')
+        filePath.append("/");
+    }
+    filePath += filename;
+
+    //
+    // open the file
+    //
+    FILE *fp = NULL;
+    fp = fopen(filePath.toLocal8Bit().data(), "w");
+
+    //
+    // If we can't create the file then create it in the local directory
+    //
+    if (fp == NULL)
+    {
+        QString localFilePath = m_localReportDirectory;
+        if (localFilePath.at(localFilePath.size()-1) != '/')
         {
-            normalizedDir.append("/");
+            localFilePath.append("/");
         }
-
-        //
-        // create the filename path name
-        //
-        sprintf(filename, "%s%02d%02d%04d_%02d%02d%02d.txt",
-                normalizedDir.toLocal8Bit().data(),
-                t->tm_mon+1, t->tm_mday, t->tm_year+1900,
-                t->tm_hour, t->tm_min, t->tm_sec);
-
-        //
-        // open the file
-        //
-        fp = fopen(filename, "w");
+        localFilePath += filename;
+        fp = fopen(localFilePath.toLocal8Bit().data(), "w");
 
         if (fp == NULL)
         {
-            //QString g_stringNotConnected  = "<html><span style=\" font-size:8pt; font-weight:600; color:#F00000;\">NotConnected</span></html>";
             QString title = QFileInfo( QCoreApplication::applicationFilePath() ).fileName();
             QString msg = "<html><span style=\" font-size:12pt; font-weight:600; color:#F00000;\">";
-            msg += "Could not write report file: <p>";
-            msg.append(filename);
-            msg.append("</p><p>Save report to different directory?</p>");
-            msg.append("</span></html>");
-            if (QMessageBox::warning(this, title, msg, QMessageBox::Yes|QMessageBox::No) != QMessageBox::Yes)
-            {
-                return(false);
-            }
+            msg += "Could not write report to alternate location:<p>";
+            msg.append(localFilePath);
+            msg.append("</p></span></html>");
+            QMessageBox::warning(this, title, msg, QMessageBox::Ok);
 
-            m_alternateReportDir = QFileDialog::getExistingDirectory(this,
-                                     tr("Select an Alternate Report Directory"), "/",
-                                     QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
-
-            if (m_alternateReportDir.isEmpty())
-            {
-                return(false);
-            }
+            return(false);
         }
+        else
+        {
 
+            QString title = QFileInfo( QCoreApplication::applicationFilePath() ).fileName();
+            QString msg = "<html><span style=\" font-size:12pt; font-weight:600; color:#F00000;\">";
+            msg += "Could not write report to the primary directory:<p>";
+            msg += filePath;
+            msg += "</p>The report will be written to:<p>";
+            msg += localFilePath;
+            msg += "</p></span></html>";
+            QMessageBox::warning(this, title, msg, QMessageBox::Ok);
+        }
+        m_alternatReportFiles.push_back(localFilePath);
 
     }
 
-    if (!m_alternateReportDir.isEmpty())
-    {
-        m_alternatReportFiles.push_back(filename);
-    }
-
+    //
+    // Create the file now
+    //
     for (unsigned int i=0; i<m_reportStrings.size(); i++)
     {
         fprintf(fp, "%s\n", m_reportStrings[i].toLocal8Bit().data());
     }
     fclose(fp);
 
-    return(false);
+    return(true);
 }
 
 

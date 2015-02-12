@@ -105,7 +105,7 @@ private:
     QString m_databaseZNum;
 
     QStringList m_alternatReportFiles;
-
+    QString m_localReportDirectory;
 };
 
 
