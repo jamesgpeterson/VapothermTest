@@ -1,3 +1,18 @@
+/*!
+ * @file mainwindow.h
+ * @brief Declares the MainWindow class
+ *
+ * @author    	J. Peterson
+ * @date        02/13/2015
+ * @copyright	(C) Copyright Enercon Technologies 2015, All rights reserved.
+ *
+ * Revision History
+ * ----------------
+ *  Version | Author       | Date        | Description
+ *  :--:    | :-----       | :--:        | :----------
+ *   1      | J. Peterson  | 02/13/2015  | initial version
+ *
+*/
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
@@ -10,11 +25,9 @@
 #include <QString>
 #include <QSettings>
 #include <QtSql/QSqlDatabase>
-
-
 #include "TestScript.h"
 
-#define VERSION_STRING "2.2"
+#define VERSION_STRING "2.3"
 
 namespace Ui
 {

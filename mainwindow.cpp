@@ -1,3 +1,18 @@
+/*!
+ * @file mainwindow.cpp
+ * @brief Implements the MainWindow class
+ *
+ * @author    	J. Peterson
+ * @date        02/13/2015
+ * @copyright	(C) Copyright Enercon Technologies 2015, All rights reserved.
+ *
+ * Revision History
+ * ----------------
+ *  Version | Author       | Date        | Description
+ *  :--:    | :-----       | :--:        | :----------
+ *   1      | J. Peterson  | 02/13/2015  | initial version
+ *
+*/
 #include <time.h>
 #include <QLabel>
 #include <QString>
@@ -96,7 +111,7 @@ MainWindow::MainWindow(QWidget *parent) :
     //
     // report directory
     //
-    m_reportDir = m_settings->value("ReportDir", ".").toString();
+    m_reportDir = m_settings->value("ReportDir", ".").toString();  // "//enxlnk1/Transfer/FunctionalTest"
     if (!m_reportDir.isEmpty() && (!m_reportDir.endsWith("/") && !m_reportDir.endsWith("\\")))
     {
         m_reportDir.append("/");
@@ -121,7 +136,6 @@ MainWindow::MainWindow(QWidget *parent) :
     commPortSelected_A(portA);
     commPortSelected_B(portB);
 
-
     //
     // Database parameters
     //
@@ -133,24 +147,10 @@ MainWindow::MainWindow(QWidget *parent) :
     m_databasePwd    = m_settings->value("Database/databasePwd", "").toString();    // "ET657&me"
     m_databaseZNum   = m_settings->value("Database/databaseZNum", "").toString();   // "Z4001-01"
 
-
     //
     // Clear the results window.
     //
     ui->labelResults->setText(g_stringIdle);
-
-    //
-    // Test the report directory
-    //
-    QFile *qf = new QFile(m_reportDir);
-    if (!qf->exists())
-    {
-        QString msg = "<html><span style=\" font-size:12pt; font-weight:600; color:#F00000;\">Report directory can not be reached:<p>    ";
-        msg += m_reportDir;
-        msg += "<p>Reports will be written locally.</p></span></html>";
-        displayWarning(msg.toLocal8Bit().data());
-    }
-    delete(qf);
 
     //
     // Construct the local report directory
@@ -164,6 +164,21 @@ MainWindow::MainWindow(QWidget *parent) :
     {
         dir->mkdir(m_localReportDirectory);
     }
+
+    //
+    // Test the report directory
+    //
+    QFile *qf = new QFile(m_reportDir);
+    if (!qf->exists())
+    {
+        QString msg = "<html><span style=\" font-size:12pt; font-weight:600; color:#F00000;\">Report directory can not be reached:<p>    ";
+        msg += m_reportDir;
+        msg += "<p>Reports will be written locally to:<p>    ";
+        msg += m_localReportDirectory;
+        msg+= "</p></span></html>";
+        displayWarning(msg.toLocal8Bit().data());
+    }
+    delete(qf);
 
     //
     // Unsaved Reports

@@ -1,3 +1,20 @@
+/*!
+ * @file Command.h
+ * @brief Declares the CCommand class
+ *
+ * This simple class holds a single command
+ *
+ * @author    	J. Peterson
+ * @date        02/13/2015
+ * @copyright	(C) Copyright Enercon Technologies 2015, All rights reserved.
+ *
+ * Revision History
+ * ----------------
+ *  Version | Author       | Date        | Description
+ *  :--:    | :-----       | :--:        | :----------
+ *   1      | J. Peterson  | 02/13/2015  | initial version
+ *
+*/
 #ifndef COMMAND_H
 #define COMMAND_H
 

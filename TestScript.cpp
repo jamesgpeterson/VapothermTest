@@ -1,3 +1,20 @@
+/*!
+ * @file TestScript.cpp
+ * @brief Implements the CTestScript class
+ *
+ * This class processes a script file that contains a list of script commands
+ *
+ * @author    	J. Peterson
+ * @date        02/13/2015
+ * @copyright	(C) Copyright Enercon Technologies 2015, All rights reserved.
+ *
+ * Revision History
+ * ----------------
+ *  Version | Author       | Date        | Description
+ *  :--:    | :-----       | :--:        | :----------
+ *   1      | J. Peterson  | 02/13/2015  | initial version
+ *
+*/
 #include <stdio.h>
 #include <time.h>
 #include <QMessageBox>
@@ -232,7 +249,7 @@ bool CTestScript::runTest(unsigned int n)
 
             case CCommand::CMD_PROMPT:
             {
-                generateTestHeader(pCommand->m_lineNumber);
+                generateTestHeader();
                 logStringBlack("Nominal: \"YES\"");
                 QMessageBox::StandardButton reply;
                 QString title = "VapoTherm Test";
@@ -345,7 +362,7 @@ bool CTestScript::runTest(unsigned int n)
 
             case CCommand::CMD_EXPECT:
             {
-                generateTestHeader(pCommand->m_lineNumber);
+                generateTestHeader();
                 logStringGray(pCommand->m_line.toLocal8Bit());
                 QString line = m_responseBuffer;
                 line = line.trimmed();
@@ -394,7 +411,7 @@ bool CTestScript::runTest(unsigned int n)
 
         case CCommand::CMD_EXPECT_CHAR:
             {
-                generateTestHeader(pCommand->m_lineNumber);
+                generateTestHeader();
                 logStringGray(pCommand->m_line.toLocal8Bit());
                 QString line = m_responseBuffer;
                 line = line.trimmed();
@@ -445,7 +462,7 @@ bool CTestScript::runTest(unsigned int n)
 
         case CCommand::CMD_EXPECT_STR:
             {
-                generateTestHeader(pCommand->m_lineNumber);
+                generateTestHeader();
                 logStringGray(pCommand->m_line.toLocal8Bit());
                 QString line = m_responseBuffer;
                 line = line.trimmed();
@@ -591,7 +608,7 @@ QString *CTestScript::getTestName(unsigned int n)
     return(&m_commandList[commandIndex].m_stringArg);
 }
 
-void CTestScript::generateTestHeader(int lineNumber)
+void CTestScript::generateTestHeader()
 {
     //
     // Add the test name

@@ -1,3 +1,20 @@
+/*!
+ * @file Command.cpp
+ * @brief Implements the CCommand class
+ *
+ * This simple class holds a single command
+ *
+ * @author    	J. Peterson
+ * @date        02/13/2015
+ * @copyright	(C) Copyright Enercon Technologies 2015, All rights reserved.
+ *
+ * Revision History
+ * ----------------
+ *  Version | Author       | Date        | Description
+ *  :--:    | :-----       | :--:        | :----------
+ *   1      | J. Peterson  | 02/13/2015  | initial version
+ *
+*/
 
 #include <vector>
 #include <QStringList>

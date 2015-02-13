@@ -1,3 +1,20 @@
+/*!
+ * @file TestScript.h
+ * @brief Declares the CTestScript class
+ *
+ * This class processes a script file that contains a list of script commands
+ *
+ * @author    	J. Peterson
+ * @date        02/13/2015
+ * @copyright	(C) Copyright Enercon Technologies 2015, All rights reserved.
+ *
+ * Revision History
+ * ----------------
+ *  Version | Author       | Date        | Description
+ *  :--:    | :-----       | :--:        | :----------
+ *   1      | J. Peterson  | 02/13/2015  | initial version
+ *
+*/
 #ifndef TESTSCRIPT_H
 #define TESTSCRIPT_H
 #include <vector>
@@ -37,7 +54,7 @@ signals:
 
 private:
     int findTestByName(QString &name);
-    void generateTestHeader(int lineNumber);
+    void generateTestHeader();
     void generateTestTrailer();
 
 private:
