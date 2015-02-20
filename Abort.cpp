@@ -19,11 +19,26 @@
 
 CAbort *CAbort::m_instance = 0;
 
+/*!
+ * @brief CAbort constructor
+ *
+ * @author J. Peterson
+ * @date 06/22/2014
+*/
 CAbort::CAbort()
 {
    m_abort = false;
 }
 
+/*!
+ * @brief Returns the pointer to the class object
+ *
+ * The first time this is called the class is intantiated.
+ * There after, a pointer to the instatiated object is returned.
+ *
+ * @author J. Peterson
+ * @date 06/22/2014
+*/
 CAbort *CAbort::Instance()
 {
     if (m_instance == 0)
@@ -31,16 +46,36 @@ CAbort *CAbort::Instance()
     return(m_instance);
 }
 
+/*!
+ * @brief Resets the request to abort
+ *
+ * @author J. Peterson
+ * @date 06/22/2014
+*/
 void CAbort::clearRequest()
 {
     m_abort = false;
 }
 
+/*!
+ * @brief Sets the state indicating that an abort is requested.
+ *
+ * @author J. Peterson
+ * @date 06/22/2014
+*/
 void CAbort::requestAbort()
 {
     m_abort = true;
 }
 
+/*!
+ * @brief Returns the current abort state
+ *
+ * @return returns true if an abort has been requested, false otherwise
+ *
+ * @author J. Peterson
+ * @date 06/22/2014
+*/
 bool CAbort::abortRequested()
 {
     return(m_abort);

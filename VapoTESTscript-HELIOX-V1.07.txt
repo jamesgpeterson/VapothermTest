@@ -1,0 +1,2048 @@
+
+##################################################################################
+# -------------------------------------------------------
+#         ----------------------------------------
+#     -------- Vapotherm Precision Flow 3000 --------
+#     --------  Controller Board Test Script --------
+#         ----------------------------------------
+#
+# -------------------------------------------------------
+#
+#				HELIOX CONTROLLER
+#
+# -------------------------------------------------------
+#  The Vapotherm application firmware monitors many parameters
+#  during the normal operation, and will send messages to indicate
+#  changes in the operational mode of the system or errors.
+#
+#  To avoid having such messages from becoming a factor in the 
+#  manufacturing test, the "ledtest" mode is used.  The "ledtest"
+#  mode ignores much of the error checking, but does not support all 
+#  of the normal functions.  Some of the functions that are not supported
+#  are updating the analog values displayed by the "ad" command.  
+#  For this reason, the test fixture includes resources to measure analog 
+#  voltages.
+#
+# -------------------------------------------------------
+##################################################################################
+
+	# ----------------------------------------------------------------------------
+	#	Test Script Revision History
+	# ----------------------------------------------------------------------------
+	#	1.00	Initial Release
+	#	1.01	Added Test desc and units
+	#	1.02	TS1 & TS2 commented out
+	#	1.03	Use scaled Pump Tach, which includes scale and offset constants
+	#			- Reduce time delays
+	#	1.04	Change input scaling on TP1 of 0.25X
+	#	1.05	Implement script changes to match test fixture hardware changes:
+	#				New scaling on TP1 to tolerate higher fault condition voltages
+	#				Measure DUT-Voltage and DUT Current
+	#				Test MFS_AIR_F and MFS_O2_F at only 4V input
+	#	1.06	Use 10-second delay after each controller reset, to ensure that the start-up POST
+	#			test is complete, and that the controller is ready to receive serial commands.
+	#	1.07	Added test for Heater Control, O2_Sensor Input, and changed the
+	#			  speaker test to use the Mode button input for better
+	#			  detection of audio issues known as "quackers".
+	#			  Set sources to 0V after O2_DRV and AIR_DRV tests,
+	#			  and corrected MUX setting on AIR_DRV test.
+	#			  Test DUT_CURRENT before DUT_VOLTAGE to clearly identify an over-current
+	#			  board on the first failure.
+	#			  Reduced the LSL on TP1 to 10V, to allow diagnosis on boards with faults.
+	# ----------------------------------------------------------------------------
+
+# --------------------------------
+#  Test Script Version
+# --------------------------------
+scriptVersion 1.07
+
+
+
+test Test Fixture Comm Check
+# -------------------------------------------------------
+#	Fixture Firmware Version
+# -------------------------------------------------------
+	flush_b	  #  Flush Serial Buffer
+	sendline_b TFver
+	sleep 100
+	readline_b
+
+	# Aborts Test Script, if no communication
+	#  expect_str 1 TFver=
+	expect 2 0 99
+	end_on_error
+
+
+test Test Fixture Lid Status (or Fixture Power)
+# -------------------------------------------------------
+#	Read Fixture Lid Status
+# -------------------------------------------------------
+	sendline_b FIXTURE-LID-STATUS
+	sleep 200
+	readline_b
+	expect_str 2 OK
+	#  Aborts Test Script, if Fixture Lid is Open
+	#  also will fail if fixture power is not ON.
+	end_on_error
+
+
+
+test Hold PIC-Micro in reset-mode
+# ------------------------------------------------------------------
+#	Use reset button contacts to keep PIC-Micro in reset-mode
+#   PIC-Micro is held in reset by default, unless Relay-7 is set.
+# ------------------------------------------------------------------
+sendline_b CLEAR-RELAY-7   # Just to make sure PIC-Micro is reset
+sleep 100
+
+
+test Apply 12VDC
+# ------------------------------------------------------------------
+#	APPLY +12V POWER TO THE VAPOTHERM BOARD
+# ------------------------------------------------------------------
+sendline_b SET-RELAY-8
+sleep 300
+
+
+test DUT-CURRENT	
+# -------------------------------------------------------
+#	DUT-CURRENT
+# -------------------------------------------------------
+	sendline_b DUT-CURRENT
+	sleep 500	# wait for INA219 to respond
+	readline_b
+	expect 2 50 500
+	#  Abort test script if this test fails.  
+	end_on_error	
+	sleep 100
+
+	
+test DUT-VOLTAGE
+# -------------------------------------------------------
+#	DUT-VOLTAGE
+# -------------------------------------------------------
+	sendline_b DUT-VOLTAGE
+	sleep 500	# wait for INA219 to respond
+	readline_b
+	expect 2 11.5 12.5
+	#  Abort test script if this test fails.  
+	end_on_error
+	sleep 100
+
+	
+# -------------------------------------------------------
+#	READY-TO-TEST ... Enable Test Fixture Signal MUX
+# -------------------------------------------------------
+	sendline_b MUX-ENABLE
+	sleep 100
+
+##################################################################################
+
+
+test +12V_Power_In (TP1)
+# -------------------------------------------------------
+# 	   -------- +12V_Power_In --------
+# -------------------------------------------------------
+
+	# -------------------------------------------
+	# INPUT:  TP1	+12V
+	# -------------------------------------------
+	# Set MUX MB-01 = ( Vapo PF TP1	+12V )
+	sendline_b MB-01
+	sleep 100
+	sendline_b MEASURE-MB 
+	sleep 100
+	readline_b
+
+	#----- 0.1284X scale factor (25.7V max input) -------
+	# TP1(+12V) input scale factor = 0.1284X = 1.54V Nominal
+	# (LSL= 10.0V * 0.1284X = 1.284V)
+	# (USL= 12.5V * 0.1284X = 1.605V)	
+	#-----------------------------------
+	units (Volts*0.1284)
+	expect 2 1.284 1.605
+
+	#-------------------------------------------------------
+	#  Abort test script if this test fails. 
+	end_on_error	
+	#  ( Incorrect voltage at TP1 )
+
+	
+test VCC_Regulator (TP2)
+# -------------------------------------------
+# INPUT:  TP2	VCC
+# -------------------------------------------
+
+	# Set MUX MB-02 = ( Vapo PF TP2	VCC )
+	sendline_b MB-02
+	sleep 100
+	sendline_b MEASURE-MB 
+	sleep 100
+	readline_b
+	#-----------------------------------
+	# TP2(VCC) input scale factor 5V * 0.6 = 3.00V Nominnal
+	# (LSL= 4.5V * 0.6X = 2.70V)
+	# (USL= 5.3V * 0.6X = 3.18V)
+	units (Volts*0.6)
+	expect 2 2.70 3.18
+
+	#  Abort test script if this test fails. 
+	#  ( No 5V power at TP2 )
+	end_on_error
+
+
+
+
+test 5V_LED-Regulator (TP3)
+# -------------------------------------------
+# INPUT:  TP3	5V_LED Regulator
+# -------------------------------------------
+
+	# Set MUX MB-03 = ( Vapo PF TP3	5V_LED )
+	sendline_b MB-03
+	sleep 100
+	sendline_b MEASURE-MB 
+	sleep 100
+	readline_b
+	#-----------------------------------
+	# TP2(VCC) input scale factor 5V * 0.6X = `3.00V Nominal
+	# (LSL= 4.5V * 0.6X = 2.70V)
+	# (USL= 5.3V * 0.6X = 3.18V)
+	units (Volts*0.6)
+
+	#  Abort test script if this test fails.  
+	end_on_error
+
+	
+
+
+test +10Vref-Regulator (J8-1)
+# -------------------------------------------
+# INPUT:  J8-1	10Vref-Regulator (J8-1)
+# -------------------------------------------
+# Set MUX MA-07 = ( Vapo PF J8-1  10V-Ref )
+	sendline_b MA-07
+	sleep 100
+	sendline_b MEASURE-MA
+	sleep 100
+	readline_b
+	#-----------------------------------
+	# J8-1(10V-Ref) input scale factor = 0.25X = 2.50V Nominal
+	# (LSL=  9V * 0.25X = 2.2.25V)
+	# (USL= 11V * 0.25X = 2.75V)
+	units (Volts*0.25)
+	expect 2 2.25 2.75
+
+
+
+test VREF-ADJ (J8-6)
+# -------------------------------------------
+# INPUT:  J8-6	VREF-ADJ (J8-6)
+# -------------------------------------------
+# Set MUX MA-08 = ( Vapo PF J8-6  VREF-ADJ )
+	sendline_b MA-08
+	sleep 100
+	sendline_b MEASURE-MA
+	sleep 100
+	readline_b
+
+		# -------------------------------------------
+		#  PF Controller Version
+		# -------------------------------------------
+		# J8-6(VREF-ADJ) 10V * 0.1557X = 1.557 Nominal
+		# (LSL=  9V * 0.1557X = 1.401V)
+		# (USL= 11V * 0.1557X = 1.713V)
+		# units (Volts*0.1557)
+		# expect 2 1.401 1.713
+ 
+	# -------------------------------------------
+	#  Heliox Controller Version
+	# -------------------------------------------
+	# J8-6(VREF-ADJ) 14.95V * 0.1557X = 2.328 Nominal
+	# (LSL=  14V * 0.1557X = 2.179V)
+	# (USL= 16V * 0.1557X = 2.491V)
+	units (Volts*0.1557)
+	expect 2 2.179 2.491
+
+		
+##################################################################################
+
+
+
+# -------------------------------------------------------
+#  Verify current limiting resistors for the IR Emitters
+# -------------------------------------------------------
+
+
+test DWP-IR-Emitter-Power BBL1-EX, (J5-18)
+# -------------------------------------------
+# MUX MA-01 = ( Vapo PF J5-18, BBL1 EX )
+	sendline_b MA-01
+	sleep 100
+	sendline_b MEASURE-MA
+	sleep 100
+	readline_b
+	#------------------------------------
+	units (Volts*0.476)
+	expect 2 1.8 3.0
+	#------------------------------------
+
+test DWP-IR-Emitter-Power BBL2-EX (J5-13)
+# -------------------------------------------
+# MUX MA-02 = ( Vapo PF J5-13, BBL2 EX )
+	sendline_b MA-02
+	sleep 100
+	sendline_b MEASURE-MA
+	sleep 100
+	readline_b
+	#------------------------------------
+	units (Volts*0.476)
+	expect 2 1.8 3.0
+	#------------------------------------
+
+test DWP-IR-Emitter-Power LVL1-EX, (J5-12)
+# -------------------------------------------
+# MUX MA-03 = ( Vapo PF J5-12, LVL1 EX )
+	sendline_b MA-03
+	sleep 100
+	sendline_b MEASURE-MA
+	sleep 100
+	readline_b
+	#------------------------------------
+	units (Volts*0.476)
+	expect 2 1.8 3.0
+	#------------------------------------
+
+test DWP-IR-Emitter-Power LVL2-EX, (J5-7)
+# -------------------------------------------
+# MUX MA-04 = ( Vapo PF J5-7, LVL2 EX )
+	sendline_b MA-04
+	sleep 100
+	sendline_b MEASURE-MA
+	sleep 100
+	readline_b
+	#------------------------------------
+	units (Volts*0.476)
+	expect 2 1.8 3.0
+	#------------------------------------
+
+test DWP-IR-Emitter-Power EMIT1, (J5-5)
+# -------------------------------------------
+# MUX MA-05 = ( Vapo PF J5-5, EMIT1 )
+	sendline_b MA-05
+	sleep 100
+	sendline_b MEASURE-MA
+	sleep 100
+	readline_b
+	#------------------------------------
+	expect 2 1.8 3.0
+	#------------------------------------
+
+test DWP-IR-Emitter-Power EMIT2, (J5-3)
+# -------------------------------------------
+# MUX MA-06 = ( Vapo PF J5-3, EMIT2 )
+	sendline_b MA-06
+	sleep 100
+	sendline_b MEASURE-MA
+	sleep 100
+	readline_b
+	#------------------------------------
+	units (Volts*0.476)
+	expect 2 1.8 3.0
+	#------------------------------------
+
+
+##################################################################################
+# -------------------------------------------
+#	Release PIC-Micro Reset
+#
+#  PIC is held in reset, unless Relay-7 is set.
+# -------------------------------------------
+	sendline_b SET-RELAY-7
+	sleep 100
+##################################################################################
+
+
+
+
+test RESET-Vapotherm-Controller
+# ------------------------------------------------------------------
+#    	--- RESET Vapotherm Controller ---
+# ------------------------------------------------------------------
+	flush_a		# Clear serial buffer -- Vapo COM 
+	sleep 100
+ 	sendline_a reset
+	# ------------------
+	#  Abort test script if this test fails.
+	end_on_error
+
+	# -----------------------------------------------------
+	#   RESET Vapotherm Controller ... 
+	#   ... WAIT 10 Seconds 
+	# -----------------------------------------------------
+	#
+	sleep 2000	
+	sleep 2000	
+	sleep 2000	
+	sleep 2000	
+	sleep 2000
+
+	# --------------------------------------
+	# Clear serial buffer -- Vapo COM 
+	# --------------------------------------
+	flush_a
+
+
+
+test ENTER-ledtest-mode
+# -----------------------------
+#  Enter into "ledtest" mode
+
+	# --------------------------------------
+	# Clear serial buffer -- Vapo COM 
+	# --------------------------------------
+	flush_a
+	sendline_a ledtest
+	# ------------------
+	# wait and send it again
+	sleep 300	
+        sendline_a ledtest
+	# ------------------
+
+
+test Set to ignore=all alarms
+# -------------------------------------------------------
+# 	  -------- Ignore All Alarms --------
+#     Suppress alarm messages while testing 
+# -------------------------------------------------------
+	flush_a
+	sendline_a ignore=all
+	sleep 100
+
+
+
+test Set_CHECKSUM
+# ------------------------------------------------------------------
+#	Set the CHECKSUM on the VAPOTHERM BOARD
+#	to prevent Error 68 on brand-new boards
+# ------------------------------------------------------------------
+	#
+	flush_a
+	sendline_a rom_checksum=56551
+	sleep 300
+	flush_a
+	sendline_a rom_checksum
+	readline_a
+	readline_a
+	
+	# -------------------------------------------------------
+	expect_str 1 rom_checksum=56551
+	end_on_error
+
+
+
+
+
+test Vapotherm-Firmware-Version
+# -------------------------------------------------------
+# 	  -------- Vapotherm-firmware-Version --------
+# -------------------------------------------------------
+
+	# -------------------------------------------------------
+	#  Also verifies communication with the Vapotherm Board
+	# -------------------------------------------------------
+	flush_a
+	sendline_a ver
+	sleep 100
+	readline_a
+	expect 2 3000 3000		# Model Number
+	readline_a
+	sleep 100
+
+	sendline_a ver
+	sleep 100
+	readline_a
+	readline_a
+	expect_str 2 3.8.3		# Vapotherm firmware version number
+	sleep 100
+
+	#  Abort test script if this test fails.  (Considered a CRITIAL FAILURE )
+	end_on_error
+
+
+
+# ------------------------------------------------------------------
+#  Verify the IR sensor inputs
+# ------------------------------------------------------------------
+#   Use digital output bit, through MUX-DO
+#   to drive a digital input pin on the Vapo
+#   controller.  Then, use the serial command 
+#   "in" to read back the inverted bit status.
+# ------------------------------------------------------------------
+
+test DWP-Chamber, CARTR_PRESENCE Input (J5-4)
+   # -------------------------------------------
+   # INPUT:  CARTR_PRESENCE
+   # -------------------------------------------
+
+	# Set MUX DO-01 = ( Vapo PF J5-4, CARTR PRESENSE )
+	sendline_b DO-01
+	sleep 100
+	
+	# ------------------
+	#  Input=1, Ouput=0
+	# ----------------------------------------
+		desc [Input High]
+	# ----------------------------------------
+	# Set input pin to Digital 1
+	sendline_b SET-DO=1
+	sleep 100
+
+	# Serial command "in=4" displays only the digital port DATA
+	sendline_a in=4
+	sleep 100
+		# Read RAW Digital Port Values		
+		readline_a 
+		# --------- RE2=0  (Inverted Digital Bit)
+		units binary bit
+		expect_char 4 9 0 
+
+		#  To stop the update per second, send another command.
+		#  The empty sendline_a command sends just a carriage return character.
+		sendline_a
+		sleep 100
+		flush_a		# flush_a command clears the buffer.
+
+
+	# ------------------
+	#  Input=0, Ouput=1
+	# ----------------------------------------
+		desc [Input Low]
+	# ----------------------------------------
+	# Set input pin to Digital 0
+	sendline_b SET-DO=0
+		sleep 100
+
+	# Serial command "in=4" displays only the digital port DATA
+	sendline_a in=4
+		sleep 100
+		# Read RAW Digital Port Values		
+		readline_a 
+		# --------- RE2=1  (Inverted Digital Bit)
+		units binary bit
+		expect_char 4 9 1
+
+		#  To stop the update per second, send another command.
+		#  The empty sendline_a command sends just a carriage return character.
+		sendline_a
+		sleep 100
+		flush_a		# flush_a command clears the buffer.
+
+
+
+test DWP-Chamber, CARTR_TYPE Input (J5-6)
+  # -------------------------------------------
+  # INPUT:  CARTR_TYPE  J5-6
+  # -------------------------------------------
+
+	# Set MUX DO-02 = ( Vapo PF J5-6, CARTR TYPE )
+	sendline_b DO-02
+		sleep 100
+	
+	# ------------------
+	#  Input=1, Ouput=0
+	# ----------------------------------------
+		desc [Input High]
+	# ----------------------------------------
+	# Set input pin to Digital 1
+	sendline_b SET-DO=1
+		sleep 100
+
+	# Serial command "in=4" displays only the digital port DATA
+	sendline_a in=4
+		sleep 100
+		# Read RAW Digital Port Values		
+		readline_a 
+		# --------- RE1=0  (Inverted Digital Bit)
+		units binary bit
+		expect_char 4 10 0 
+
+		#  To stop the update per second, send another command.
+		#  The empty sendline_a command sends just a carriage return character.
+		sendline_a
+		sleep 100
+		flush_a		# flush_a command clears the buffer.
+
+
+	# ------------------
+	#  Input=0, Ouput=1
+	# ----------------------------------------
+		desc [Input Low]
+	# ----------------------------------------
+	# Set input pin to Digital 0
+	sendline_b SET-DO=0
+		sleep 100
+
+	# Serial command "in=4" displays only the digital port DATA
+	sendline_a in=4
+		sleep 100
+		# Read RAW Digital Port Values		
+		readline_a 
+		# --------- RE1=1  (Inverted Digital Bit)
+		units binary bit
+		expect_char 4 10 1
+
+		#  To stop the update per second, send another command.
+		#  The empty sendline_a command sends just a carriage return character.
+		sendline_a
+		sleep 100
+		flush_a		# flush_a command clears the buffer.
+
+
+
+test DWP-Chamber, LVL2 Input (J5-10)
+   # -------------------------------------------
+   # INPUT:  LVL2  J5-10
+   # -------------------------------------------
+
+	# Set MUX DO-03 = ( Vapo PF J5-10, LVL2 )
+	sendline_b DO-03
+		sleep 100
+	
+	# ------------------
+	#  Input=1, Ouput=0
+	# ----------------------------------------
+		desc [Input High]
+	# ----------------------------------------
+	# Set input pin to Digital 1
+	sendline_b SET-DO=1
+		sleep 100
+
+	# Serial command "in=4" displays only the digital port DATA
+	sendline_a in=4
+		sleep 100
+		# Read RAW Digital Port Values		
+		readline_a 
+   		sleep 100
+		# --------- RJ1=0  (Inverted Digital Bit)
+		units binary bit
+		expect_char 6 11 0
+
+		#  To stop the update per second, send another command.
+		#  The empty sendline_a command sends just a carriage return character.
+		sendline_a
+		sleep 100
+		flush_a		# flush_a command clears the buffer.
+
+
+	# ------------------
+	#  Input=0, Ouput=1
+	# ----------------------------------------
+		desc [Input Low]
+	# ----------------------------------------
+	# Set input pin to Digital 0
+	sendline_b SET-DO=0
+		sleep 100
+
+	# Serial command "in=4" displays only the digital port DATA
+	sendline_a in=4
+		sleep 100
+		# Read RAW Digital Port Values		
+		readline_a 
+   		sleep 100
+		# --------- RJ1=1  (Inverted Digital Bit)
+		units binary bit
+		expect_char 6 11 1
+
+		#  To stop the update per second, send another command.
+		#  The empty sendline_a command sends just a carriage return character.
+		sendline_a
+		sleep 100
+		flush_a		# flush_a command clears the buffer.
+
+
+
+test DWP-Chamber, LVL1 Input (J5-11)
+   # -------------------------------------------
+   # INPUT:  LVL1  J5-11
+   # -------------------------------------------
+
+	# Set MUX DO-04 = ( Vapo PF J5-11, LVL2 )
+	sendline_b DO-04
+		sleep 100
+	
+	# ------------------
+	#  Input=1, Ouput=0
+	# ----------------------------------------
+		desc [Input High]
+	# ----------------------------------------
+	# Set input pin to Digital 1
+	sendline_b SET-DO=1
+		sleep 100
+
+	# Serial command "in=4" displays only the digital port DATA
+	sendline_a in=4
+		sleep 100
+		# Read RAW Digital Port Values		
+		readline_a 
+		# --------- RJ0=0  (Inverted Digital Bit)
+		units binary bit
+		expect_char 6 10 0 
+
+		#  To stop the update per second, send another command.
+		#  The empty sendline_a command sends just a carriage return character.
+		sendline_a
+		sleep 100
+		flush_a		# flush_a command clears the buffer.
+
+
+	# ------------------
+	#  Input=0, Ouput=1
+	# ----------------------------------------
+		desc [Input Low]
+	# ----------------------------------------
+	# Set input pin to Digital 0
+	sendline_b SET-DO=0
+		sleep 100
+
+	# Serial command "in=4" displays only the digital port DATA
+	sendline_a in=4
+		sleep 100
+		# Read RAW Digital Port Values		
+		readline_a 
+		# --------- RJ0=1  (Inverted Digital Bit)
+		units binary bit
+		expect_char 6 10 1
+
+		#  To stop the update per second, send another command.
+		#  The empty sendline_a command sends just a carriage return character.
+		sendline_a
+		sleep 100
+		flush_a		# flush_a command clears the buffer.
+
+
+test DWP-Chamber, BBL Input (J5-16)
+   # -------------------------------------------
+   # INPUT:  BBL2  J5-16
+   # -------------------------------------------
+
+	# Set MUX DO-05 = ( Vapo PF J5-16, BBL2 )
+	sendline_b DO-05
+		sleep 200
+	
+	# ------------------
+	#  Input=1, Ouput=0
+	# ----------------------------------------
+		desc [Input High]
+	# ----------------------------------------
+	# Set input pin to Digital 1
+	sendline_b SET-DO=1
+		sleep 100
+
+	# Serial command "in=4" displays only the digital port DATA
+	sendline_a in=4
+		sleep 100
+		# Read RAW Digital Port Values		
+		readline_a 
+		# --------- RB5=0  (Inverted Digital Bit)
+		units binary bit
+		expect_char 2 6 0 
+
+		#  To stop the update per second, send another command.
+		#  The empty sendline_a command sends just a carriage return character.
+		sendline_a
+		sleep 100
+		flush_a		# flush_a command clears the buffer.
+
+
+	# ------------------
+	#  Input=0, Ouput=1
+	# ----------------------------------------
+		desc [Input Low]
+	# ----------------------------------------
+	# Set input pin to Digital 0
+	sendline_b SET-DO=0
+		sleep 100
+
+	# Serial command "in=4" displays only the digital port DATA
+	sendline_a in=4
+		sleep 100
+		# Read RAW Digital Port Values		
+		readline_a 
+		# --------- RB5=1  (Inverted Digital Bit)
+		units binary bit
+		expect_char 2 6 1
+
+		#  To stop the update per second, send another command.
+		#  The empty sendline_a command sends just a carriage return character.
+		sendline_a
+		sleep 100
+		flush_a		# flush_a command clears the buffer.
+
+
+test DWP-Chamber, BBL1 Input (J5-17)
+   # -------------------------------------------
+   # INPUT:  BBL1  J5-17
+   # -------------------------------------------
+
+	# Set MUX DO-06 = ( Vapo PF J5-17, BBL1 )
+	sendline_b DO-06
+		sleep 100
+	
+	# ------------------
+	#  Input=1, Ouput=0
+	# ----------------------------------------
+		desc [Input High]
+	# ----------------------------------------
+	# Set input pin to Digital 1
+	sendline_b SET-DO=1
+		sleep 100
+
+	# Serial command "in=4" displays only the digital port DATA
+	sendline_a in=4
+		sleep 100
+		# Read RAW Digital Port Values		
+		readline_a 
+		# --------- RB4=0  (Inverted Digital Bit)
+		units binary bit
+		expect_char 2 7 0 
+
+		#  To stop the update per second, send another command.
+		#  The empty sendline_a command sends just a carriage return character.
+		sendline_a
+		sleep 100
+		flush_a		# flush_a command clears the buffer.
+
+
+	# ------------------
+	#  Input=1, Ouput=0
+	# ----------------------------------------
+		desc [Input Low]
+	# ----------------------------------------
+	# Set input pin to Digital 0
+	sendline_b SET-DO=0
+		sleep 100
+
+	# Serial command "in=4" displays only the digital port DATA
+	sendline_a in=4
+		sleep 100
+		# Read RAW Digital Port Values		
+		readline_a 
+		# --------- RB4=1  (Inverted Digital Bit)
+		units binary bit
+		expect_char 2 7 1
+
+		#  To stop the update per second, send another command.
+		#  The empty sendline_a command sends just a carriage return character.
+		sendline_a
+		sleep 100
+		flush_a		# flush_a command clears the buffer.
+
+
+
+
+
+# ------------------------------------------------------------------
+#
+#  Verify that front panel inputs can be recognized
+#
+# ------------------------------------------------------------------
+#
+#   Use digital output bit, through MUX-DO
+#   to drive a digital input pin on the Vapo
+#   controller.  Then, use the serial command 
+#   "in" to read back the inverted bit status.
+#
+# ------------------------------------------------------------------
+
+test MODE Button (J9-17)
+   # -------------------------------------------
+   # INPUT:  MODE BUTTON (J9-17)
+   # -------------------------------------------
+
+	# Set MUX DO-11 = ( Vapo PF J9-17, MODE )
+	sendline_b DO-11	
+		sleep 100
+
+	# ------------------
+	#  Input=1, Ouput=1
+	# ----------------------------------------
+		desc [Input High]
+	# ----------------------------------------
+	# Set input pin to Digital 1
+	sendline_b SET-DO=1
+		sleep 100
+
+	# Serial command "in=4" displays only the digital port DATA
+	sendline_a in=4
+		sleep 100
+		# Read RAW Digital Port Values		
+		readline_a 
+		# --------- RB3=1  ( Digital Bit)
+		units binary bit
+		expect_char 2 8 1
+
+		#  To stop the update per second, send another command.
+		#  The empty sendline_a command sends just a carriage return character.
+		sendline_a
+		sleep 100
+		flush_a		# flush_a command clears the buffer.
+
+	# ------------------
+	#  Input=0, Ouput=0
+	# ----------------------------------------
+		desc [Input Low]
+	# ----------------------------------------
+	# Set input pin to Digital 0
+	sendline_b SET-DO=0
+		sleep 100
+
+	# Serial command "in=4" displays only the digital port DATA
+	sendline_a in=4
+		sleep 100
+		# Read RAW Digital Port Values		
+		readline_a 
+		# --------- RB3=0  ( Digital Bit)
+		units binary bit
+		expect_char 2 8 0
+
+		#  To stop the update per second, send another command.
+		#  The empty sendline_a command sends just a carriage return character.
+		sendline_a
+		sleep 100
+		flush_a		# flush_a command clears the buffer.
+
+
+
+test MUTE Button (J9-12)
+   # -------------------------------------------
+   # INPUT:  MUTE BUTTON (J9-12)
+   # -------------------------------------------
+
+	# Set MUX DO-10 = ( Vapo PF J9-12, MUTE )
+	sendline_b DO-10	
+		sleep 100
+
+	# ------------------
+	#  Input=1, Ouput=1
+	# ----------------------------------------
+		desc [Input High]
+	# ----------------------------------------
+	# Set input pin to Digital 1
+	sendline_b SET-DO=1
+		sleep 100
+
+	# Serial command "in=4" displays only the digital port DATA
+	sendline_a in=4
+		sleep 100
+		# Read RAW Digital Port Values		
+		readline_a 
+		# --------- RD6=0  ( Digital Bit)
+		units binary bit
+		expect_char 3 5 1
+
+		#  To stop the update per second, send another command.
+		#  The empty sendline_a command sends just a carriage return character.
+		sendline_a
+		sleep 100
+		flush_a		# flush_a command clears the buffer.
+
+	# ------------------
+	#  Input=0, Ouput=0
+	# ----------------------------------------
+		desc [Input Low]
+	# ----------------------------------------
+	# Set input pin to Digital 0
+	sendline_b SET-DO=0
+		sleep 100
+
+	# Serial command "in=4" displays only the digital port DATA
+	sendline_a in=4
+		sleep 100
+		# Read RAW Digital Port Values		
+		readline_a 
+		# --------- RD6=1  ( Digital Bit)
+		units binary bit
+		expect_char 3 5 0
+
+		#  To stop the update per second, send another command.
+		#  The empty sendline_a command sends just a carriage return character.
+		sendline_a
+		sleep 100
+		flush_a		# flush_a command clears the buffer.
+
+
+test ENCODER-A Input (J9-15)
+   # -------------------------------------------
+   # INPUT:  ENCODER-A (J9-15)
+   # -------------------------------------------
+
+	# Set MUX DO-08 = ( Vapo PF J9-15, ENCODER-A )
+	sendline_b DO-08	
+		sleep 100
+
+	# ------------------
+	#  Input=1, Ouput=1
+	# ----------------------------------------
+		desc [Input High]
+	# ----------------------------------------
+
+	# Set input pin to Digital 1
+	sendline_b SET-DO=1
+		sleep 100
+
+	# Serial command "in=4" displays only the digital port DATA
+	sendline_a in=4
+		sleep 100
+		# Read RAW Digital Port Values		
+		readline_a 
+		# --------- RB1=1  ( Digital Bit)
+		units binary bit
+		expect_char 2 10 1
+
+		#  To stop the update per second, send another command.
+		#  The empty sendline_a command sends just a carriage return character.
+		sendline_a
+		sleep 100
+		flush_a		# flush_a command clears the buffer.
+
+	# ------------------
+	#  Input=0, Ouput=0
+	# ----------------------------------------
+		desc [Input Low]
+	# ----------------------------------------
+
+	# Set input pin to Digital 0
+	sendline_b SET-DO=0
+		sleep 100
+
+	# Serial command "in=4" displays only the digital port DATA
+	sendline_a in=4
+		sleep 100
+		# Read RAW Digital Port Values		
+		readline_a 
+		# --------- RB1=1  ( Digital Bit)
+		units binary bit
+		expect_char 2 10 0
+
+		#  To stop the update per second, send another command.
+		#  The empty sendline_a command sends just a carriage return character.
+		sendline_a
+		sleep 100
+		flush_a		# flush_a command clears the buffer.
+
+
+test ENCODER-B Input (J9-18)
+   # -------------------------------------------
+   # INPUT:  ENCODER-B (J9-18)
+   # -------------------------------------------
+
+	# Set MUX DO-09 = ( Vapo PF J9-18, ENCODER-B )
+	sendline_b DO-09	
+		sleep 100
+
+	# ------------------
+	#  Input=1, Ouput=1
+	# ----------------------------------------
+		desc [Input High]
+	# ----------------------------------------
+
+	# Set input pin to Digital 1
+	sendline_b SET-DO=1
+		sleep 100
+
+	# Serial command "in=4" displays only the digital port DATA
+	sendline_a in=4
+		sleep 100
+		# Read RAW Digital Port Values		
+		readline_a 
+
+		# --------- RB1=1  ( Digital Bit)
+		units binary bit
+		expect_char 2 9 1
+
+		#  To stop the update per second, send another command.
+		#  The empty sendline_a command sends just a carriage return character.
+		sendline_a
+		sleep 100
+		flush_a		# flush_a command clears the buffer.
+
+
+	# ------------------
+	#  Input=0, Ouput=0
+	# ----------------------------------------
+		desc [Input Low]
+	# ----------------------------------------
+	# Set input pin to Digital 0
+	sendline_b SET-DO=0
+		sleep 100
+
+	# Serial command "in=4" displays only the digital port DATA
+	sendline_a in=4
+		sleep 100
+		# Read RAW Digital Port Values		
+		readline_a 
+		# --------- RB1=1  ( Digital Bit)
+		units binary bit
+		expect_char 2 9 0
+
+		#  To stop the update per second, send another command.
+		#  The empty sendline_a command sends just a carriage return character.
+		sendline_a
+		sleep 100
+		flush_a		# flush_a command clears the buffer.
+
+
+
+test SOLENOID-OUTPUT (J8-7)
+# -------------------------------------------
+#
+#  Verify the Solenoid output signal  J8-7
+#
+# -------------------------------------------
+#
+#   Use the serial command "sol=0" and "sol=1"
+#   to set the output state.  
+#   Then, read to connector pin voltage, using
+#   the MB-12 MUX, and ADC-01.
+#
+#   Test Fixture:  
+#   Connect a 150k pull-up from J8-7 to 12VDC 
+#
+# -------------------------------------------
+#  MUST use "ledtest" Mode for SOLENOID test
+#	Otherwise, the PF board will OVERIDE the sol=1
+#	setting and revert it back to sol=0 status.
+# -------------------------------
+   # -------------------------------------------
+   # SOLENOID output signal J8-7
+   # -------------------------------------------
+	flush_a
+	# Set MUX MC-09 = ( Vapo PF J8-7, SOLENOID )
+	sendline_b MC-09
+	sleep 100
+	# ------------------
+	#  sol=0
+	# ----------------------------------------
+		desc [sol=0]
+	# ----------------------------------------
+	# Set SOLENOID state to 0
+	sendline_a sol=0
+	sleep 300
+	# Measure the voltage
+	sendline_b  MEASURE-MC
+	readline_b
+	units (Volts*0.1557)
+	expect 2 2.7 3.2
+
+	# ------------------
+	#  sol=1
+	# ----------------------------------------
+		desc [sol=1]
+	# ----------------------------------------
+	flush_a
+	# Set SOLENOID state to 1
+	sendline_a sol=1
+	sleep 300
+	# Measure the voltage
+	sendline_b  MEASURE-MC
+	readline_b
+	units (Volts*0.1557)
+	expect 2 -0.1 0.3
+	# clear Solenoid
+	sendline_a sol=0
+
+
+
+test O2_DRV Valve Output (TP6_J10-8)
+# ---------------------------------------------------
+#   O2_DRV Valve Output (TP6_J10-8)
+# ---------------------------------------------------
+# Test uses 10 ohm load between J10-8 and J10-7,
+# in place of series proportional valves
+# ---------------------------------------------------
+		desc [Input 3.00V]
+	# ----------------------------------------
+	# Setup Measurement MUX, DAC_O2, TP8
+	sendline_b MA-9
+	sleep 100
+
+	# Set "DAC_O2" (TP8) on the Vapotherm board to 3.00V
+	sendline_a daca=3072
+
+     # Measure O2_DRV voltage (Proportional Valve Output)
+	sendline_b MEASURE-MA
+	readline_b
+	# Expect 5.28V Output
+	#  5.25V * 0.25X  = 1.32V Nominal
+	#  USL = 0.5V
+	#  LSL = 1.8V
+	units (Volts*0.25)
+	expect 2 0.5 3.0
+
+	# Set "DAC_O2" (TP8) on the Vapotherm board to 0V
+	sendline_a daca=0
+	sleep 100
+
+
+test AIR_DRV Valve Output (TP7_J10-6)
+# ---------------------------------------------------
+#   AIR_DRV Valve Output (TP7_J10-6)
+# ---------------------------------------------------
+# Test uses 10 ohm load between J10-6 and J10-5,
+# in place of series proportional valves
+# ---------------------------------------------------
+	# ----------------------------------------
+		desc [Input 3.00V]
+	# ----------------------------------------
+	# Setup Measurement MUX, DAC_AIR, TP9
+	sendline_b MA-10
+	sleep 100
+
+	# Set "DAC_AIR" (TP9) on the Vapotherm board to 3.00V
+	sendline_a dacb=3072
+
+     # Measure AIR_DRV   (Proportional Valve Output)
+	sendline_b MEASURE-MB
+	readline_b
+	# Expect 5.28V Output
+	#  5.25V * 0.25X  = 1.32V Nominal
+	#  USL = 0.5V
+	#  LSL = 1.8V
+	units (Volts*0.25)
+	expect 2 0.5 3.0
+
+	# Set "DAC_AIR" (TP9) on the Vapotherm board to 0V
+	sendline_a dacb=0
+	sleep 100
+	
+# ----------------------------------------
+ test RT1/TS1 SENSOR-INPUT (J22)
+# ----------------------------------------
+#	# Vapotherm board reads an I2C IR temperature sensor
+#	# located inside the test fixture
+#	# Read TS1
+	flush_a 	
+	sendline_a ad
+		sleep 500
+			sleep 500
+	sleep 100
+		readline_a	# Read Channel Names
+		readline_a	# Read Channel Names
+		readline_a	# Read Channel Numbers
+	sleep 100
+		readline_a	# Read RAW ADC VALUES
+		readline_a	# Read Converted Values
+		units Deg. C
+		expect 1 15 35	# ------- 15 C to 35 C		
+
+		
+# ----------------------------------------
+#   test RT2/TS2 SENSOR-INPUT (J22)
+# ----------------------------------------
+#	# Vapotherm board reads an I2C IR temperature sensor
+#	# located inside the test fixture 
+#	# Read TS2
+	sleep 500
+	flush_a 
+	sendline_a ad
+		sleep 500
+			sleep 500
+	sleep 100
+		readline_a	# Read Channel Names
+		readline_a	# Read Channel Names
+		readline_a	# Read Channel Numbers
+	sleep 100
+		readline_a	# Read RAW ADC VALUES
+		readline_a	# Read Converted Values
+		units Deg. C
+		expect 2 15 35	# ------- 15 C to 35 C
+
+
+
+# ----------------------------------------
+test RT3/TS3 THERMO-INPUT (J23)
+# ----------------------------------------
+	# Vapotherm board reads a thermocouple in the test fixture,
+	# that is connected through J23.
+		
+	# Read RT3
+	flush_a 
+	sendline_a ad
+	sleep 100
+		readline_a	# Read Channel Names
+		readline_a	# Read Channel Names
+		readline_a	# Read Channel Numbers
+	sleep 100
+		readline_a	# Read RAW ADC VALUES
+		readline_a	# Read Converted Values
+		units Deg. C
+		expect 7 15 35	# ------- 15 C to 35 C
+
+
+
+# -------------------------------------------------------
+# 		-------- NTC --------
+# -------------------------------------------------------
+
+# ----------------------------------------
+test NTC
+# ----------------------------------------
+
+# Read the on-board NTC temperature
+	flush_a
+	sendline_a ntc
+	sleep 100
+	readline_a	# NTC = 396 < 26.4 C >
+	# Limits = 25C -/+10C
+	units Deg. C
+	expect 5 15 35
+
+
+
+# -------------------------------------------------------
+# 	-------- PRESSURE INPUTS --------
+# -------------------------------------------------------
+
+
+# ----------------------------------------
+test PRESS_AIR Pressure Inputs (J10-15, J10-16)
+# ----------------------------------------
+	# Setup Measurement MUX, PRESS_AIR, TP12
+	sendline_b MB-10
+	sleep 100
+	# ----------------------------------------
+		desc [Output Low]
+	# ----------------------------------------
+	# PRESS_AIR_A (+ input) = 2.2
+	# PRESS_AIR_B (- input) = 2.8
+	# PRESS4_MIX Output = 0V
+	#  Set PRESS_AIR_A (Non-Inverting Input)
+	sendline_b PWM_SA_6=2.2
+	sleep 100
+	#  Set PRESS_AIR_B (Inverting Input)
+	sendline_b PWM_SB_6=2.8
+	sleep 100
+	# Measure PRESS_AIR output at TP12
+	# (Output driven to the low rail)
+	sendline_b MEASURE-MB
+	readline_b
+	units (Volts*0.6)
+	expect 2 -0.10 0.5
+	# ----------------------------------------
+		desc [Output High]
+	# ----------------------------------------
+	# PRESS_AIR_A (+ input) = 2.8
+	# PRESS_AIR_B (- input) = 2.2
+	# PRESS_AIR Output = 5V (5V * 0.6X = 3V nominal)
+	#  Set PRESS_AIR_A (Non-Inverting Input)
+	sendline_b PWM_SA_6=2.8
+	sleep 100
+	#  Set PRESS_AIR_B (Inverting Input)
+	sendline_b PWM_SB_6=2.2
+	sleep 100
+	# Measure PRESS_AIR output at TP12
+	# (Output driven to the high rail, 5V * 0.6X = 3.3V)
+	sendline_b MEASURE-MB
+	readline_b
+	units (Volts*0.6)
+	expect 2 2.5 3.5
+	# Clear Voltage Sources
+	sendline_b PWM_SA_5=0.0
+	sendline_b PWM_SA_5=0.0
+
+
+# ----------------------------------------
+test PRESS_O2 Pressure Inputs  (J10-11, J10-12)
+# ----------------------------------------
+	# Setup Measurement MUX, PRESS_O2, TP13
+	sendline_b MB-11
+	sleep 200
+
+	# ----------------------------------------
+		desc [Output Low]
+	# ----------------------------------------
+	# PRESS_O2_A (+ input) = 2.2
+	# PRESS_o2_B (- input) = 2.8
+	# PRESS4_MIX Output = 0V
+	#  Set PRESS_O2_A (Non-Inverting Input)
+	sendline_b PWM_SA_5=2.2
+	sleep 100
+	#  Set PRESS_O2_B (Inverting Input)
+	sendline_b PWM_SB_5=2.8
+	sleep 100
+	# Measure PRESS_O2 output at TP13
+	# (Output driven to the low rail)
+	sendline_b MEASURE-MB
+	readline_b
+	units (Volts*0.6)
+	expect 2 -0.10 0.5
+
+	# ----------------------------------------
+		desc [Output High]
+	# ----------------------------------------
+	# PRESS_O2_A (+ input) = 2.8
+	# PRESS_O2_B (- input) = 2.2
+	# PRESS_O2 Output = 5V (5V * 0.6X = 3V nominal)
+	#  Set PRESS_O2_A (Non-Inverting Input)
+	sendline_b PWM_SA_5=2.8
+	sleep 100
+	#  Set PRESS_MIX_B (Inverting Input)
+	sendline_b PWM_SB_5=2.2
+	sleep 100
+	# Measure PRESS_O2 output at TP13
+	# (Output driven to the high rail, 5V * 0.6X = 3.3V)
+	sendline_b MEASURE-MB
+	readline_b
+	units (Volts*0.6)
+	expect 2 2.5 3.5
+	# Clear Voltage Sources
+	sendline_b PWM_SA_5=0.0
+	sendline_b PWM_SA_5=0.0
+
+# ----------------------------------------
+test PRESS_MIX Inputs  (J8-11, J8-12)
+# ----------------------------------------
+	# Setup Measurement MUX, PRESS_MIX, TP14
+	sendline_b MB-12
+	sleep 200
+	# ----------------------------------------
+		desc [Output Low]
+	# ----------------------------------------
+	# PRESS_MIX_A (+ input) = 2.2
+	# PRESS_MIX_B (- input) = 2.8
+	# PRESS4_MIX Output = 0V
+	#  Set PRESS_MIX_A (Non-Inverting Input)
+	sendline_b PWM_SA_3=2.2
+	sleep 100
+	#  Set PRESS_MIX_B (Inverting Input)
+	sendline_b PWM_SB_3=2.8
+	sleep 100
+	# Measure PRESS4_MIX output at TP14
+	# (Output driven to the low rail)
+	sendline_b MEASURE-MB
+	readline_b
+	units (Volts*0.6)
+	expect 2 -0.10 0.5
+
+	# ----------------------------------------
+		desc [Output High]
+	# ----------------------------------------
+	# PRESS_MIX_A (+ input) = 2.8
+	# PRESS_MIX_B (- input) = 2.2
+	# PRESS4_MIX Output = 5V (5V * 0.6X = 3V nominal)
+	#  Set PRESS_MIX_A (Non-Inverting Input)
+	sendline_b PWM_SA_3=2.8
+	sleep 100
+	#  Set PRESS_MIX_B (Inverting Input)
+	sendline_b PWM_SB_3=2.2
+	sleep 100
+	# Measure PRESS4_MIX output at TP14
+	# (Output driven to the high rail, 5V * 0.6X = 3.3V)
+	sendline_b MEASURE-MB
+	readline_b
+	units (Volts*0.6)
+	expect 2 2.5 3.5
+
+
+
+
+
+# -------------------------------------------------------
+# 		-------- PUMP Power --------
+# -------------------------------------------------------
+
+# ----------------------------------------
+test PUMP-Power Output (J7-4)
+# ----------------------------------------
+
+# -----------------------------------
+#   PUMPON and PUMPOFF 
+#    are only tested without LOAD.
+# ----------------------------------- 
+
+	# ----------------------------------------
+		desc [PUMPOFF]
+	# ----------------------------------------
+	sendline_a PUMPOFF
+	sleep 100
+
+	# Measure voltage across the Pump Load, using MUX MA-12
+	sendline_b MA-12
+	sleep 100
+	sendline_b MEASURE-MA
+	readline_b
+	# ----------------------------------------
+	# Nominal = 0V
+	# LSL = 0V
+	# USL = 0.1V
+	units (Volts*0.25)
+	expect 2 0 0.3
+
+	# ----------------------------------------
+		desc [PUMPON]
+	# ----------------------------------------
+	sendline_a PUMPON
+	sleep 100
+
+	sendline_b MEASURE-MA
+	readline_b
+	# ----------------------------------------
+	# Nominal = 12V * 0.25X = 3.0
+	# LSL = 10V * 0.25X = 2.5V
+	# USL = 12.5V * 0.25X = 3.125
+	units (Volts*0.25)
+	expect 2 2.5 3.125
+
+
+
+
+test O2-SENSOR-INPUT
+# -------------------------------------------------------
+# 	-------- O2 Sensor Input --------
+# -------------------------------------------------------
+     # ----------------------------------------
+     #
+     # PART 1 -- Apply input voltage and 
+     #           measure analog voltage at TP15
+     # ----------------------------------------
+	# ----------------------------------------
+		desc [Analog Voltage at TP15]
+	# ----------------------------------------
+
+	# Test Fixture includes a voltage divider
+	# that provides a small differential voltage (40mV)
+	# to +IN (J2-1) and -IN (J2-3)
+	# with a bias of about 2.4V
+
+
+	# Set DAC-A to 4.5V
+	sendline_b PWM_SA_1=4.5
+	sleep 200	
+
+	# -------------------------------------------
+	# Measure TP15  O2_SENSOR
+
+	# Set MUX MB-13 = ( Vapo PF TP15  O2_SENSOR )
+	sendline_b MB-13
+	sleep 100
+
+	sendline_b MEASURE-MB
+	readline_b
+
+
+	# O2 Sensor Input, includes instrumentation amplifier 
+	# with a 49.63X gain 
+	# (IN+) - (IN-) =  (40mV * 49.63X)  = 1.98V
+	#
+	#-----------------------------
+	# Wide Tolerance 1.98V +/- 1.0
+	#-----------------------------
+	units (Volts*0.4)
+	expect 2 0.98 2.98
+
+
+     # ----------------------------------------
+     # PART 2 -- While input voltage is still applied, 
+     #           Read the "O2_SENS" field, which
+     #           verifies the PIC micro input channel.
+     # ----------------------------------------
+	# ----------------------------------------
+		desc [Digital Value read by PIC Micro]
+	# ----------------------------------------
+	# ----------------------------------------	
+	# Read 02_SENS field
+	# ----------------------------------------
+	flush_a		# Clear serial buffer -- Vapo COM 
+	sleep 100
+	sendline_a ad
+	sleep 300
+		readline_a		# Channel Names
+		readline_a		# Channel Names con't
+		readline_a		# Channel Numbers
+	sleep 100
+		readline_a		# Raw ADC Value
+	# Read O2_SENS in field 9
+
+	units Raw-ADC Counts
+	expect 9 300 900	# PF Contrioller Limits
+		readline_a		# Scaled Value	
+
+
+	#-----------------------------
+	# Clear sources
+	sendline_b PWM_SA_1=0.0
+	sleep 200
+
+
+##################################################################################
+
+
+test RESET-to-exit-ledtest-mode
+# ------------------------------------------------------------------
+#    	--- RESET Vapotherm Controller to exit "ledtest" mode ---
+# ------------------------------------------------------------------
+
+# -------------------------------------------
+# Reset the PIC-Micro, to exit "ledtest" mode
+#
+#  PIC is held in reset, unless Relay-7 is set.
+# -------------------------------------------
+
+	sendline_b CLEAR-RELAY-7
+	sleep 300
+
+	sendline_b SET-RELAY-7
+
+
+
+	# --------------------------------------
+	# Clear serial buffer -- Vapo COM 
+	# --------------------------------------
+	flush_a		# Clear serial buffer -- Vapo COM 
+
+	#  Abort test script if this test fails. 
+	end_on_error
+
+	# -----------------------------------------------------
+	#   RESET Vapotherm Controller ... EXIT LEDTEST MODE
+	#   ... WAIT 10 Seconds 
+	# -----------------------------------------------------
+	sleep 2000	
+	sleep 2000	
+	sleep 2000	
+	sleep 2000	
+	sleep 2000
+
+
+
+test Set to ignore=all alarms
+# -------------------------------------------------------
+# 	  -------- Ignore All Alrarms --------
+#         Supress alarm messages while testing 
+# -------------------------------------------------------
+ sendline_a ignore=all
+ sleep 100
+
+
+
+# -------------------------------------------------------
+# 		-------- PUMP Tach --------
+# -------------------------------------------------------
+
+# ----------------------------------------
+test PUMP Tach Input (J7-3)
+	# ----------------------------------------
+	#  The pump tach signal is ONLY connected to the board
+	#  during this test, since it has been shown to be a
+	#  signaiicant source of noise for other tests.
+	# ----------------------------------------
+
+	# ----------------------------------------
+		desc [Tach Input Disconnected]
+	# ----------------------------------------
+	#  Disconnect Pump-Tach signal to the Vapotherm Board
+	sendline_b CLEAR-RELAY-3
+	sleep 1000
+
+	# ----------------------------------------
+	# Read the TACH voltage, expect 2.8V based on a 120Hz input from the test fixture
+	#	
+	flush_a		# Clear serial buffer -- Vapo COM 
+	sendline_a ad
+	sleep 700
+		readline_a		# Channel Names
+		readline_a		# Channel Names con't
+		readline_a		# Channel Numbers
+	sleep 100
+		readline_a		# RAW ADC VALUES
+		units Raw-ADC Counts
+		expect 10 0 20	# ----- PUMP TACH Limits
+			
+		readline_a		# Scaled Values
+		#	units Scaled-Tach
+		#	expect 10 -200 200	# ----- PUMP TACH Limits
+
+	#  Disconnect Pump-Tach signal from the Vapotherm Board
+	sendline_b CLEAR-RELAY-3
+	sleep 100
+
+	# ----------------------------------------
+		desc [Tach Input Active]
+	# ----------------------------------------
+	#  Connect Pump-Tach signal to the Vapotherm Board
+	sendline_b SET-RELAY-3
+	sleep 700
+
+	# ----------------------------------------
+	# Read the TACH voltage, expect 2.8V based on a 120Hz input from the test fixture
+	#	
+	flush_a		# Clear serial buffer -- Vapo COM 
+	sendline_a ad
+	sleep 100
+		readline_a		# Channel Names
+		readline_a		# Channel Names con't
+		readline_a		# Channel Numbers
+	sleep 100
+		readline_a		# RAW ADC VALUES
+		units Raw-ADC Counts
+		expect 10 300 900	# ----- PUMP TACH Limits
+		
+		readline_a		# Scaled Values
+		#	units Scaled-Tach
+		#	expect 10 3000 4500	# ----- PUMP TACH Limits
+
+	#  Disconnect Pump-Tach signal from the Vapotherm Board
+	sendline_b CLEAR-RELAY-3
+	sleep 100
+
+
+
+test Battery Charger Test
+# -------------------------------------------------------
+# 	-------- BATTERY CHAGER TEST --------
+# -------------------------------------------------------
+#
+#  The charger test reads the ADC values from the BAT_STAT singal ("BATC")
+#  and the BATSTAT2 signal (BATV).  The charger output voltage and the 
+#  switcher current are evaluated whith the battery disconnected and then
+#  with the battery connected.
+#
+#	The serial command "AD" is used to measure BATC and BATV.
+#	TP16 is used to measure the voltage at the battery
+#	TP17 is used to meausre the charger switcher current
+#
+# -------------------------------------------------------
+#
+#  NO LOAD TEST
+#
+#	Without a rechargeable battery pack or a charger-test-load attached
+#	the charger switcher current is reported as -0.4A ( negative ! )
+#
+#  LOAD TEST
+#
+#	CHARGER-TEST-LOAD is 10 ohm 
+#	   The nominal charging current is 0.56A  (5.56V / 10ohm)
+#	   The switcher current needed for this load is about 1.1A
+#	   CHARGER-TEST-LOAD power dissipation is 3.2W
+#
+#-------------------------------------------------------
+# DEBUG NOTE 
+#------------
+# When the serial command "charger=1" is sent to the 
+# Vapotherm PF Controller, it responds with the 
+# message "charger == 0 ==> 1".
+# HOWEVER, the status of the charger does not change!
+# the serial command "charge", always returns the
+# message "charger == 0".  Also the signal voltage 
+# at U44-pin-6 (signal CHR_SDN from the PIC), always
+# reads 1.5V, regardless of the charger=1 command.
+#-------------------------------------------------------
+#
+#
+#	# --------------------------------------
+#	# Clear serial buffer -- Vapo COM 
+#	# --------------------------------------
+	flush_a
+
+  # ----------------------------------
+  #  Battery Charger Test -- UNLOADED
+  # ----------------------------------
+	# ------------------
+		desc [No Load, Switcher Output Voltage]
+	# ------------------
+	# DISCONNECT charge-load
+	sendline_b CLEAR-RELAY-2	
+		sleep 1000	
+
+	# ----- Read BATV and BATC -----
+	flush_a
+	sendline_a ad
+		sleep 100
+		readline_a		# Channel Names
+		readline_a		# Channel Names con't
+		readline_a		# Channel Number
+		sleep 100
+		readline_a		# RAW ADC Values
+		readline_a		# Scaled Values
+	# Charger Output Voltage = 5.6V nominal
+		expect 12 5.2 6.3
+	# ------------------
+		desc [No Load, Switcher Current]
+	# ------------------
+	# Charger Switcher Current is reported as 0.0A when not connected. 
+	units (Volts*0.25)
+	expect 11 0.1 0.6
+
+
+  # ----------------------------------
+  #   Battery Charger Test -- LOADED
+  # ----------------------------------
+
+	# CONNECT charger-load 
+	sendline_b SET-RELAY-2
+
+	# Allow time for the charger to settle
+	sleep 2000	
+
+	# ----- Read BATV and BATC -----
+	flush_a
+	sendline_a ad
+		sleep 100
+		readline_a		# Channel Names
+		readline_a		# Channel Names con't
+		readline_a		# Channel Number
+		sleep 100
+		readline_a		# RAW ADC Values
+		readline_a		# Scaled Values
+
+	# ------------------
+		desc [Loaded, Switcher Output Voltage]
+	# ------------------
+	# Charger Output Voltage = 5.6V nominal
+	expect 12 5.2 6.3
+
+	# ------------------
+		desc [Loaded, Switcher Current]
+	# ------------------
+	# Charger SWITCHER Current is reported as 1.1A nominal with a 10-ohm load
+	expect 11 0.7 1.8
+
+	# ------------------
+		desc [Loaded, TP16 - Battery Voltage]
+	# ------------------
+	# Connect to TP16, BATTERY
+	sendline_b MB-14
+	sleep 100
+	sendline_b MEASURE-MB
+	sleep 100
+	readline_b
+	# 5.7V * 0.25X = 1.425V nominal
+	# 5.1V * 0.25V = 1.275V  (LSL)
+	# 6.3V * o.25V = 1.575   (USL)
+	units (Volts*0.25)
+	expect 2 1.275 1.575
+
+	# ------------------
+		desc [Loaded, TP17 - Charger Output Voltage]
+	# ------------------
+	# Connect to TP17, CHARGER
+	sendline_b MB-15
+	sleep 100
+	sendline_b MEASURE-MB
+	sleep 100
+	readline_b
+	# 5.7V * 0.25X = 1.425V nominal
+	# 5.1V * 0.25V = 1.275V  (LSL)
+	# 6.3V * o.25V = 1.575   (USL)
+	units (Volts*0.25)
+	expect 2 1.275 1.575
+
+	# DISCONNECT charge-load
+	sendline_b CLEAR-RELAY-2	
+		sleep 200			
+
+
+
+
+# -------------------------------------------------------
+#
+#	MFS tests CAN NOT run in ledtest mode, since the
+#	"ad" command does not update the MFS1 and MFS2
+#	values while in "ledtest" mode
+#
+# -------------------------------------------------------
+
+test MFS_AIR_F (J8-3)
+   # -------------------------------------------
+   # INPUT:  MFS_AIR_F   J8-3
+   # -------------------------------------------
+
+	# ------------------
+		desc [Input 4V]
+	# ------------------
+	# Set input voltage  (MFS_AIR_F, J8-3)
+	sendline_b PWM_SB_2=4.00
+	sleep 300
+	flush_a		# Clear serial buffer -- Vapo COM 
+	sendline_a ad
+	sleep 100
+		readline_a		# Channel Names
+		readline_a		# Channel Names con't
+		readline_a		# Channel Numbers
+	sleep 100
+		readline_a		# Raw ADC Value
+	# Read MFS1 in field 5
+
+		# ------------------
+		# PF Controller --  Input Scale Factor = 0.909X
+		# PF Controller --  4V * 0.909X = Nominal=2949(3.6)  
+		# Nominal=2949(3.6)  LSL=2539(3.0V)  USL=3359(4.1V)
+		# units Raw-ADC Counts
+		# expect 5 2458 3359	# PF Contrioller Limits
+		# readline_a		# Scaled Value	
+	
+	# ------------------
+	# Heliox Controller --  Input Scale Factor = 0.606X 	
+	# Heliox Controller --  4V * 0.606X = Nominal=1986(2.424)  	
+	#	LSL=1474(1.8V)  USL=2458(3.0V)	
+	# ------------------
+	units Raw-ADC Counts
+	expect 5 1474 2458	# HELIOX Contrioller Limits	
+	readline_a		# Scaled Value
+		
+	# Clear 
+	sendline_b PWM_SB_2=0.00
+
+
+
+
+test MFS_O2_F (J8-2)
+   # -------------------------------------------
+   # INPUT:  MFS_O2_F   J8-2
+   # -------------------------------------------
+		
+	# ------------------
+		desc [Input 4V]
+	# ------------------
+	# Set input voltage  (MFS_O2_F, J8-2)
+	sendline_b PWM_SA_2=4.00
+	sleep 300
+	flush_a		# Clear serial buffer -- Vapo COM 
+	sendline_a ad
+	sleep 100
+		readline_a		# Channel Names
+		readline_a		# Channel Names con't
+		readline_a		# Channel Numbers
+	sleep 100
+		readline_a		# Raw ADC Value
+
+	# ------------------
+	# PF Controller --  Input Scale Factor = 0.909X
+	# PF Controller --  4V * 0.909X = Nominal=2949(3.6)  
+	# Nominal=2949(3.6)  LSL=2539(3.0V)  USL=3359(4.1V)
+	units Raw-ADC Counts
+	expect 6 2458 			# PF Contrioller Limits
+		readline_a		# Scaled Value
+
+	# Clear 
+	sendline_b PWM_SA_2=0.00
+
+
+
+	
+test HEATER-CONTROL
+# -------------------------------------------------------
+#    		-------- HEATER TEST --------
+# -------------------------------------------------------
+#
+#	This test CAN NOT run in ledtest mode, since the
+#	 "heatpwm=xxx" command does not update the heater
+#	 output while in "ledtest" mode
+#
+# -------------------------------------------------------
+	flush_a
+	flush_b
+
+	# Measure HEATER (RC-filtered heater PWM, as a VDC
+	# Set MUX MA-11  (Connector J15-2)
+	sendline_b  MA-11
+	sleep 100
+
+	
+	# Set heater PWM duty cycle
+	sendline_a  heatpwm=50
+	sleep 500
+	readline_a
+
+	sleep 2000	#------------
+	sleep 2000	# Wait
+	sleep 2000	# for 
+	sleep 2000	# LowPass
+	sleep 2000	# filter to      
+	sleep 2000	# stabilize
+	sleep 2000	#------------
+	
+	sendline_b MEASURE-MA  #  ** Uses 0.4X divider
+	readline_b
+	# Filtered voltage is 1.65 nominal
+	expect 2 0.9 2.3
+
+	
+	# Turn heater PWM OFF
+	sendline_a  heatpwm=0
+	sleep 100
+	readline_a
+	
+
+
+
+test AUDIO-OUTPUT
+# -------------------------------------------------------
+#
+#  Speaker test depends on the operator to judge if the beeps
+#  sound normal.  There have been previous instances where
+#  the sound output has been described as "quacking".
+#  The operator is the best option presently available to
+#  determin pass/fail on this subjective test.
+# -------------------------------------------------------
+	#  Alert the Operator to listen for beeps
+	pause  Please listen for speaker beeps.
+	flush_a		# Clear serial buffer -- Vapo COM 
+
+	# Set MUX DO-11 = ( Vapo PF J5-12, MODE )
+	sendline_b DO-11
+		sleep 100
+
+	sendline_b SET-DO=1	# Simulates pressing the Blue Mode Button
+	sendline_b SET-DO=0
+		sleep 100
+
+	sendline_b SET-DO=1	# Simulates pressing the Blue Mode Button
+	sendline_b SET-DO=0
+		sleep 100
+
+	#   Ask the operator if the beeps sound normal
+	prompt Did you hear normal sounding beeps?
+
+
+
+
+#
+#
+#
+#
+#
+##################################################################################
+#		 -------------------------------------------------------
+#		 -------------------------------------------------------
+#
+#		                     END OF TEST
+#
+#		 -------------------------------------------------------
+#		 -------------------------------------------------------
+##################################################################################
+#
+#
+#
+#
+
+
+test OnAbort
+# -------------------------------------------------------
+# SCRIPT-ABORT
+# -------------
+	sendline_b CLEAR-RELAY-8     # Disconnect board power
+	sendline_b CLEAR-RELAY-1     # BATTERY simulator power
+# -------------------------------------------------------
+
+
+
+test OnExit
+# -------------------------------------------------------
+# SCRIPT-COMPLETE
+# -----------------
+	sendline_b CLEAR-RELAY-8     # Disconnect board power
+	sendline_b CLEAR-RELAY-1     # BATTERY simulator power
+
+

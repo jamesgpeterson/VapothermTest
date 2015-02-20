@@ -162,6 +162,15 @@ bool CTestScript::readScriptFile(const char *filename)
 }
 
 
+/*!
+ * @brief Returns the index of the test with the specified name.
+ *
+ * @param[in] name - name of the desired test
+ * @return - returns the index of the test if found, -1 otherwise
+ *
+ * @author J. Peterson
+ * @date 06/22/2014
+*/
 int CTestScript::findTestByName(QString &name)
 {
     int testCount = getTestCount();
@@ -608,6 +617,12 @@ QString *CTestScript::getTestName(unsigned int n)
     return(&m_commandList[commandIndex].m_stringArg);
 }
 
+/*!
+ * @brief Generates the common report elements at the test start.
+ *
+ * @author J. Peterson
+ * @date 06/22/2014
+*/
 void CTestScript::generateTestHeader()
 {
     //
@@ -687,6 +702,12 @@ void CTestScript::generateTestHeader()
 }
 
 
+/*!
+ * @brief Generates the common report elements for the test end.
+ *
+ * @author J. Peterson
+ * @date 06/22/2014
+*/
 void CTestScript::generateTestTrailer()
 {
     //

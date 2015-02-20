@@ -24,6 +24,19 @@
 
 
 
+/*!
+ * @brief This class implements the test script.
+ *
+ * The script is a list of commands.  This class provides methods
+ * for parsing a script file as well as methods for running tests
+ * in the script file.
+ *
+ * This class uses QT signals to communicate with the test fixture via
+ * the COM ports as well as to update the user interface.
+ *
+ * @date 02/13/2015
+ * @author J Peterson
+ */
 class CTestScript : public QObject
 {
     Q_OBJECT
@@ -70,7 +83,6 @@ private:
     QString                      m_currentTest;
     QString                      m_currentDesc;
     QString                      m_currentUnits;
-
 };
 
 #endif // TESTSCRIPT_H

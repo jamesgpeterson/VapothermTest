@@ -19,15 +19,15 @@
 #include <QtCore/QtGlobal>
 #include <QCloseEvent>
 #include <QMainWindow>
-#include <QtSerialPort/QSerialPort>
+#include <QSerialPort>
 #include <QColor>
 #include <QListWidget>
 #include <QString>
 #include <QSettings>
-#include <QtSql/QSqlDatabase>
+#include <QSqlDatabase>
 #include "TestScript.h"
 
-#define VERSION_STRING "2.3"
+#define VERSION_STRING "2.4"
 
 namespace Ui
 {

@@ -23,9 +23,9 @@
 #include <QFileDialog>
 #include <QSerialPortInfo>
 #include <QDateTime>
-#include <QtSql/QSql>
-#include <QtSql/QSqlError>
-#include <QtSql/QSqlQuery>
+#include <QSql>
+#include <QSqlError>
+#include <QSqlQuery>
 #include <QDebug>
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
@@ -664,6 +664,8 @@ void MainWindow::startTestsButtonPress()
 /*!
  * @brief called when the "Open" button is pressed
  *
+ * @param[in] deviceName - name of the comm port to connect to.
+ *
  * @author J. Peterson
  * @date 06/01/2014
 */
@@ -713,6 +715,14 @@ void MainWindow::commPortSelected_A(QString deviceName)
 }
 
 
+/*!
+ * @brief called when the "Open" button is pressed for port B
+ *
+ * @param[in] deviceName - name of the comm port to connect to.
+ *
+ * @author J. Peterson
+ * @date 06/01/2014
+*/
 void MainWindow::commPortSelected_B(QString deviceName)
 {
     if (!ui->comboBox_serialPorts_B->isEnabled())
@@ -758,6 +768,14 @@ void MainWindow::commPortSelected_B(QString deviceName)
 }
 
 
+/*!
+ * @brief Logs commands to the device to the edit window
+ *
+ * @param[in] cmd - command for device
+ *
+ * @author J. Peterson
+ * @date 06/01/2014
+*/
 void MainWindow::logCommand(const char *cmd)
 {
     int index;
@@ -792,6 +810,14 @@ void MainWindow::logCommand(const char *cmd)
 }
 
 
+/*!
+ * @brief Logs replies from the device to the edit window
+ *
+ * @param[in] reply - reply from device
+ *
+ * @author J. Peterson
+ * @date 06/01/2014
+*/
 void MainWindow::logReply(const char *reply)
 {
     ui->textEditResults->moveCursor (QTextCursor::End);
@@ -871,6 +897,14 @@ bool MainWindow::sendVapoThermCommand(int portIndex, const char *command)
 
 
 
+/*!
+ * @brief Flushes the specified serial port
+ *
+ * @param[in] portIndex - 0 for port A, 1 for port B
+ *
+ * @author J. Peterson
+ * @date 06/01/2014
+*/
 void MainWindow::flushIncomingData(int portIndex)
 {
     m_serialPorts[portIndex]->clear();
@@ -964,6 +998,16 @@ bool MainWindow::readVapoThermResponse(int portIndex, char *buffer, const int bu
 
 
 
+/*!
+ * @brief Writes errors in red to the edit window
+ *
+ * The string is also written to the report.
+ *
+ * @param[in] string - text to log
+ *
+ * @author J. Peterson
+ * @date 06/01/2014
+*/
 void MainWindow::logStringRed(const char *string)
 {
     ui->textEditResults->moveCursor (QTextCursor::End);
@@ -978,6 +1022,16 @@ void MainWindow::logStringRed(const char *string)
     m_reportStrings.push_back(string);
 }
 
+/*!
+ * @brief Writes errors in red to the edit window
+ *
+ * The string is not written to the report.
+ *
+ * @param[in] string - text to log
+ *
+ * @author J. Peterson
+ * @date 06/01/2014
+*/
 void MainWindow::logStringRedToWindow(const char *string)
 {
     ui->textEditResults->moveCursor (QTextCursor::End);
@@ -992,6 +1046,16 @@ void MainWindow::logStringRedToWindow(const char *string)
 
 
 
+/*!
+ * @brief Writes messages in gray to the edit window
+ *
+ * The string is not written to the report.
+ *
+ * @param[in] string - text to log
+ *
+ * @author J. Peterson
+ * @date 06/01/2014
+*/
 void MainWindow::logStringGray(const char *string)
 {
     ui->textEditResults->moveCursor (QTextCursor::End);
@@ -1006,6 +1070,16 @@ void MainWindow::logStringGray(const char *string)
 
 
 
+/*!
+ * @brief Writes messages in black to the edit window
+ *
+ * The string is also written to the report.
+ *
+ * @param[in] string - text to log
+ *
+ * @author J. Peterson
+ * @date 06/01/2014
+*/
 void MainWindow::logStringBlack(const char *string)
 {
     ui->textEditResults->moveCursor (QTextCursor::End);
@@ -1021,6 +1095,12 @@ void MainWindow::logStringBlack(const char *string)
 
 
 
+/*!
+ * @brief Called when the "Script/Load Script File" menu is selected
+ *
+ * @author J. Peterson
+ * @date 06/01/2014
+*/
 void MainWindow::loadScriptButtonPress()
 {
     QString dirStr = QFileInfo(m_scriptFileName).canonicalPath();
@@ -1040,6 +1120,12 @@ void MainWindow::loadScriptButtonPress()
 }
 
 
+/*!
+ * @brief Called to open/reopen a script file
+ *
+ * @author J. Peterson
+ * @date 06/01/2014
+*/
 void MainWindow::reloadScriptButtonPress()
 {
     if (!m_script.readScriptFile(m_scriptFileName.toLocal8Bit()))
@@ -1080,6 +1166,12 @@ void MainWindow::reloadScriptButtonPress()
 }
 
 
+/*!
+ * @brief Called when the "Script/Select All Tests" menu is selected
+ *
+ * @author J. Peterson
+ * @date 06/01/2014
+*/
 void MainWindow::selectAllTests()
 {
     for (unsigned int i=0; i<m_testList.size(); i++)
@@ -1088,6 +1180,12 @@ void MainWindow::selectAllTests()
     }
 }
 
+/*!
+ * @brief Called when the "Script/Clear All Tests" menu is selected
+ *
+ * @author J. Peterson
+ * @date 06/01/2014
+*/
 void MainWindow::clearAllTests()
 {
     for (unsigned int i=0; i<m_testList.size(); i++)
@@ -1097,12 +1195,24 @@ void MainWindow::clearAllTests()
 }
 
 
+/*!
+ * @brief Called when the "Abort" button is pressed
+ *
+ * @author J. Peterson
+ * @date 06/01/2014
+*/
 void MainWindow::abortButtonPress()
 {
     CAbort::Instance()->requestAbort();
 }
 
 
+/*!
+ * @brief Called to generate an Aegis report after a script has finished
+ *
+ * @author J. Peterson
+ * @date 06/01/2014
+*/
 bool MainWindow::generateReport()
 {
     //
@@ -1185,6 +1295,14 @@ bool MainWindow::generateReport()
 
 
 
+/*!
+ * @brief Enables the Run button and disables the Abort button after a script completes
+ *
+ * @param[in] enabled - when true Start is enabled and Abort is disabled, when false, the oposite
+ *
+ * @author J. Peterson
+ * @date 06/01/2014
+*/
 void MainWindow::enableButtonsAfterRun(bool enable)
 {
     ui->pushButtonStartTests->setEnabled(enable);
@@ -1192,6 +1310,15 @@ void MainWindow::enableButtonsAfterRun(bool enable)
 }
 
 
+
+/*!
+ * @brief Called whenever the serial number lineEdit control text changes
+ *
+ * @param[in] serialNumber - new text in the control
+ *
+ * @author J. Peterson
+ * @date 06/01/2014
+*/
 void MainWindow::serialNumberChanged(QString serialNumber)
 {
     const int serialNumberLength = 10;
@@ -1216,19 +1343,38 @@ void MainWindow::serialNumberChanged(QString serialNumber)
 
 
 
+/*!
+ * @brief Connects to the database for validation of the serial number
+ *
+ * To connect to the database, the following can be used:
+ *     serverName   = "ENFS3"
+ *     databaseName = "EnerconUtilities"
+ *     username     = "eu_ro"
+ *     password     = "ET657&me"
+ *
+ * @return true if sucessful, false otherwise
+ *
+ * @author J. Peterson
+ * @date 06/01/2014
+*/
 bool MainWindow::connectToDatabase()
 {
-    //const QString serverName   = "ENFS3";
-    //const QString databaseName = "EnerconUtilities";
-    //const QString username     = "eu_ro";
-    //const QString password     = "ET657&me";
+    QString message;
+
+    if (m_databaseServer.isEmpty() || m_databaseServer.isEmpty())
+    {
+        logStringRed("Database for validating serial number was not specified in the .ini file.");
+        message = "Database server and/or name were not specified.\n";
+        message.append("\n\nCannot validate serial number.");
+        displayWarning(message.toLocal8Bit());
+        return(false);
+    }
 
     QString connectionString = "DRIVER={SQL SERVER};SERVER=%1;DATABASE=%2;";
     connectionString = connectionString.arg(m_databaseServer).arg(m_databaseName);
     m_database = QSqlDatabase::addDatabase("QODBC");
     m_database.setDatabaseName(connectionString);
 
-    QString message;
     logStringGray("Connecting to Database:");
     message = "    Server = ";
     message.append(m_databaseServer);
@@ -1251,6 +1397,20 @@ bool MainWindow::connectToDatabase()
 }
 
 
+/*!
+ * @brief Called to validate the serial number in the database
+ *
+ * To connect to the database, the following can be used:
+ *     serverName   = "ENFS3"
+ *     databaseName = "EnerconUtilities"
+ *     username     = "eu_ro"
+ *     password     = "ET657&me"
+ *
+ * @return true if the serial number was found, false otherwise
+ *
+ * @author J. Peterson
+ * @date 06/01/2014
+*/
 bool MainWindow::serialNumberIsInDB(QString serialNumber)
 {
     //const QString ZNumber      = "Z4001-01";
@@ -1259,7 +1419,12 @@ bool MainWindow::serialNumberIsInDB(QString serialNumber)
     // Connect to the database if this is the first time.
     //
     if (!m_database.isOpen())
-        connectToDatabase();
+    {
+        if (!connectToDatabase())
+        {
+            return(false);
+        }
+    }
 
     //
     // Query the database
@@ -1280,16 +1445,42 @@ bool MainWindow::serialNumberIsInDB(QString serialNumber)
 }
 
 
+/*!
+ * @brief Called when the "Configuration/Terminate on first error" menu is selected
+ *
+ * @param[in] checked - new state of the option
+ *
+ * @author J. Peterson
+ * @date 06/01/2014
+*/
 void MainWindow::terminateCheckboxClicked(bool checked)
 {
     m_terminateOnFirstError = checked;
 }
 
+
+/*!
+ * @brief Called when the "Configuration/Validate serial number" menu is selected
+ *
+ * @param[in] checked - new state of the option
+ *
+ * @author J. Peterson
+ * @date 06/01/2014
+*/
 void MainWindow::validateSerialNumberChecked(bool checked)
 {
     m_validateSerial = checked;
 }
 
+
+/*!
+ * @brief Called when the "Configuration/Validate serial connections" menu is selected
+ *
+ * @param[in] checked - new state of the option
+ *
+ * @author J. Peterson
+ * @date 06/01/2014
+*/
 void MainWindow::validateSerialConnectionsChecked(bool checked)
 {
     m_checkSerialConnections = checked;

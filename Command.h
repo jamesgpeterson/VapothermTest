@@ -20,9 +20,16 @@
 
 #include <QString>
 
-//
-// Simple Script Command
-//
+/*!
+ * @brief This class holds a script command
+ *
+ * The command type is specified by the commandType_t enum.
+ * The command parameters are stored in the public variables at the
+ * end of the class.  These parameters are accessed directly.
+ *
+ * @date 02/13/2015
+ * @author J Peterson
+ */
 class CCommand
 {
 public:
@@ -50,18 +57,6 @@ public:
         CMD_END_ON_ERROR
     };
 
-    union
-    {
-        struct
-        {
-            int      m_channelIndex;
-            int      m_timeoutMS;
-            QString *m_expectedString;
-        } params_WAITFOR;
-
-    };
-
-
     CCommand();
     ~CCommand();
     void parse(const char *line, int lineNumber);
@@ -81,6 +76,13 @@ public:
     double         m_argMax;
     double         m_test_hidden;
     QString        m_scriptVersion;
+
+    struct
+    {
+        int      m_channelIndex;
+        int      m_timeoutMS;
+        QString *m_expectedString;
+    } params_WAITFOR;
 };
 
 

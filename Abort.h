@@ -18,6 +18,12 @@
 #ifndef ABORT_H
 #define ABORT_H
 
+/*!
+ * @brief This class holds a user request for abort
+ *
+ * @date 02/13/2015
+ * @author J Peterson
+ */
 class CAbort
 {
 public:
@@ -28,8 +34,10 @@ public:
 
 private:
     CAbort();
-    static CAbort *m_instance;
-    bool m_abort;                //! true if an abort has been requested by the operator
+
+private:
+    static CAbort *m_instance;   //! instance of the singleton object
+    bool           m_abort;      //! true if an abort has been requested by the operator
 };
 
 #endif // ABORT_H
