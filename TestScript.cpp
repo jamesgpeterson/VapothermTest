@@ -83,7 +83,6 @@ bool CTestScript::readScriptFile(const char *filename)
     //
     m_testList.clear();
     m_commandList.clear();
-    //m_version = "none";
     m_version.clear();
 
     //
@@ -572,6 +571,11 @@ bool CTestScript::runTest(unsigned int n)
                 break;
             }
         }
+
+        //
+        // Give the UI a chance to update
+        //
+        qApp->processEvents();
 
         if (m_errorEncountered && m_terminateOnError)
         {

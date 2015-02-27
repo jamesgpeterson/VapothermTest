@@ -63,14 +63,6 @@ MainWindow::MainWindow(QWidget *parent) :
 
     m_serialPorts[0] = new QSerialPort(this);
     m_serialPorts[1] = new QSerialPort(this);
-    connect(&m_script, SIGNAL(logStringBlack(const char*)), this, SLOT(logStringBlack(const char*)));
-    connect(&m_script, SIGNAL(logStringGray(const char*)), this, SLOT(logStringGray(const char*)));
-    connect(&m_script, SIGNAL(logStringRed(const char*)), this, SLOT(logStringRed(const char*)));
-    connect(&m_script, SIGNAL(logCommand(const char *)), this, SLOT(logCommand(const char*)));
-    connect(&m_script, SIGNAL(logReply(const char *)), this, SLOT(logReply(const char*)));
-    connect(&m_script, SIGNAL(sendVapoThermCommand(int, const char *)), this, SLOT(sendVapoThermCommand(int, const char *)));
-    connect(&m_script, SIGNAL(readVapoThermResponse(int, char *, const int , const int )), this, SLOT(readVapoThermResponse(int, char *, const int , const int )));
-    connect(&m_script, SIGNAL(flushIncomingData(int)), this, SLOT(flushIncomingData(int)));
 
     ui->pushButtonStartTests->setEnabled(false);
     ui->pushButton_Abort->setEnabled(false);
@@ -208,6 +200,14 @@ MainWindow::MainWindow(QWidget *parent) :
         delete(qf);
     }
 
+    connect(&m_script, SIGNAL(logStringBlack(const char*)), this, SLOT(logStringBlack(const char*)));
+    connect(&m_script, SIGNAL(logStringGray(const char*)), this, SLOT(logStringGray(const char*)));
+    connect(&m_script, SIGNAL(logStringRed(const char*)), this, SLOT(logStringRed(const char*)));
+    connect(&m_script, SIGNAL(logCommand(const char *)), this, SLOT(logCommand(const char*)));
+    connect(&m_script, SIGNAL(logReply(const char *)), this, SLOT(logReply(const char*)));
+    connect(&m_script, SIGNAL(sendVapoThermCommand(int, const char *)), this, SLOT(sendVapoThermCommand(int, const char *)));
+    connect(&m_script, SIGNAL(readVapoThermResponse(int, char *, const int , const int )), this, SLOT(readVapoThermResponse(int, char *, const int , const int )));
+    connect(&m_script, SIGNAL(flushIncomingData(int)), this, SLOT(flushIncomingData(int)));
 }
 
 
@@ -510,7 +510,6 @@ void MainWindow::startTestsButtonPress()
     //
     std::vector<int> failedTestList;
 
-    //bool scriptPassed = true;
     ui->labelResults->setText(g_stringWorking);
     unsigned int testCount = m_testList.size();
     ui->progressBarTests->setRange(0, 2*testCount);
@@ -534,6 +533,10 @@ void MainWindow::startTestsButtonPress()
         // Skip tests that are not checked
         //
         QListWidgetItem *item = m_testList[i];
+        if (item == NULL)  // this should not be possible
+        {
+            continue;
+        }
         if (item->checkState() != Qt::Checked)
         {
             emit setProgressBarValue(2*i+2);
@@ -591,8 +594,6 @@ void MainWindow::startTestsButtonPress()
         else
         {
             passCount++;
-            //item->setForeground(Qt::green);
-            //item->setForeground(QColor(10, 140, 10));
             item->setForeground(Qt::gray);
         }
     }

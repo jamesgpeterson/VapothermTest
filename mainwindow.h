@@ -27,7 +27,7 @@
 #include <QSqlDatabase>
 #include "TestScript.h"
 
-#define VERSION_STRING "2.4"
+#define VERSION_STRING "2.5"
 
 namespace Ui
 {
