@@ -97,7 +97,7 @@ MainWindow::MainWindow(QWidget *parent) :
     m_scriptFileName = m_settings->value("Script", "").toString();
     if (!m_scriptFileName.isEmpty())
     {
-        reloadScriptButtonPress();
+        loadScript(m_scriptFileName.toLocal8Bit());
     }
 
     //
@@ -517,6 +517,65 @@ void MainWindow::startTestsButtonPress()
     int passCount = 0;
 
 
+    //
+    // Create a fake tests so we can see the version numbers
+    // in the database with the test records
+    //
+    time_t rawtime;
+    struct tm *t;
+    time (&rawtime);
+    t = localtime (&rawtime);
+    char    tmpStr[100];
+    sprintf(tmpStr, "%02d/%02d/%04d", t->tm_mon+1, t->tm_mday, t->tm_year+1900);
+    QString dateLine = "Date: ";
+    dateLine.append(tmpStr);
+    sprintf(tmpStr, "%02d:%02d:%02d", t->tm_hour, t->tm_min, t->tm_sec);
+    QString timeLine = "Time: ";
+    timeLine.append(tmpStr);
+
+    logStringBlack("TestName: Test Program Name");
+    logStringBlack("TestType: Test Program Name");
+    logStringBlack(dateLine.toLocal8Bit());
+    logStringBlack(timeLine.toLocal8Bit());
+    line = "Value: ";
+    line.append(QFileInfo( QCoreApplication::applicationFilePath() ).fileName());
+    logStringBlack(line.toLocal8Bit());
+    logStringBlack("Result: PASS");
+    logStringBlack("~#~\n");
+
+    logStringBlack("TestName: Test Program Version");
+    logStringBlack("TestType: Test Program Version");
+    logStringBlack(dateLine.toLocal8Bit());
+    logStringBlack(timeLine.toLocal8Bit());
+    line = "Value: ";
+    line.append(VERSION_STRING);
+    logStringBlack(line.toLocal8Bit());
+    logStringBlack("Result: PASS");
+    logStringBlack("~#~\n");
+
+    logStringBlack("TestName: Test Script Name");
+    logStringBlack("TestType: Test Script Name");
+    logStringBlack(dateLine.toLocal8Bit());
+    logStringBlack(timeLine.toLocal8Bit());
+    line = "Value: ";
+    line.append(QFileInfo(m_scriptFileName).fileName());
+    logStringBlack(line.toLocal8Bit());
+    logStringBlack("Result: PASS");
+    logStringBlack("~#~\n");
+
+    logStringBlack("TestName: Test Script Version");
+    logStringBlack("TestType: Test Script Version");
+    logStringBlack(dateLine.toLocal8Bit());
+    logStringBlack(timeLine.toLocal8Bit());
+    line = "Value: ";
+    line.append(m_script.getScriptVersion());
+    logStringBlack(line.toLocal8Bit());
+    logStringBlack("Result: PASS");
+    logStringBlack("~#~\n");
+
+    //
+    // Run each test...
+    //
     for (unsigned int i=0; i<testCount; i++)
     {
         //
@@ -946,7 +1005,7 @@ bool MainWindow::readVapoThermResponse(int portIndex, char *buffer, const int bu
                 return(false);
             }
 
-            m_inputBufferCount = m_serialPorts[portIndex]->read(m_inputBuffer, 1024);
+            m_inputBufferCount = m_serialPorts[portIndex]->read(m_inputBuffer, sizeof(m_inputBuffer));
             m_inputBufferIndex = 0;
 
             if (m_inputBufferCount == 0)
@@ -961,7 +1020,7 @@ bool MainWindow::readVapoThermResponse(int portIndex, char *buffer, const int bu
         //
         // Return if our output buffer is full
         //
-        if (index >= bufferSize)
+        if (index >= (bufferSize-1))
         {
             return(true);
         }
@@ -1117,21 +1176,24 @@ void MainWindow::loadScriptButtonPress()
     }
 
     m_scriptFileName = filename;
-    reloadScriptButtonPress();
+    loadScript(m_scriptFileName.toLocal8Bit());
 }
 
 
 /*!
  * @brief Called to open/reopen a script file
  *
+ * @param[in] scriptFilename - name of the script file to open
+ * @return true if successful, false otherwise.
+ *
  * @author J. Peterson
  * @date 06/01/2014
 */
-void MainWindow::reloadScriptButtonPress()
+bool MainWindow::loadScript(const char *scriptFilename)
 {
-    if (!m_script.readScriptFile(m_scriptFileName.toLocal8Bit()))
+    if (!m_script.readScriptFile(scriptFilename))
     {
-        return;
+        return(false);
     }
 
     ui->listWidget->clear();
@@ -1164,6 +1226,7 @@ void MainWindow::reloadScriptButtonPress()
     ui->progressBarTests->setValue(0);
 
     setTitle();
+    return(true);
 }
 
 

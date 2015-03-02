@@ -49,7 +49,6 @@ signals:
 public slots:
     void startTestsButtonPress();
     void loadScriptButtonPress();
-    void reloadScriptButtonPress();
     void commPortSelected_A(QString deviceName);
     void commPortSelected_B(QString deviceName);
     void serialNumberChanged(QString serialNumber);
@@ -82,6 +81,7 @@ private:
     void displayReplyPrompt();
     bool connectToDatabase();
     bool serialNumberIsInDB(QString serialNumber);
+    bool loadScript(const char *scriptFilename);
 
 private:
     Ui::MainWindow *ui;
